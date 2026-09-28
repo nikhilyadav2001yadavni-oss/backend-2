@@ -1,0 +1,2584 @@
+paths:
+  /api/v1/admin/signup:
+    post:
+      tags:
+        - Admin
+      summary: Register a new admin
+      description: Create a new admin account with email, username, and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: Admin User
+                  description: Admin name
+                email:
+                  type: string
+                  format: email
+                  example: admin@winvest.com
+                  description: Admin email address
+                password:
+                  type: string
+                  format: password
+                  example: AdminSecure123!
+                  description: Admin password (strong password required)
+      responses:
+        '200':
+          description: Admin registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Admin Created Successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: 60d5ec49f8d2e63a4c8e9a1a
+                      name:
+                        type: string
+                        example: Admin User
+                      email:
+                        type: string
+                        example: admin@winvest.com
+                      role:
+                        type: string
+                        example: admin
+                      token:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          refreshToken:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          accessTokenExpiry:
+                            type: string
+                            format: date-time
+                          refreshTokenExpiry:
+                            type: string
+                            format: date-time
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                adminExists:
+                  value:
+                    success: false
+                    message: Admin already exists with this email
+                    data: null
+                weakPassword:
+                  value:
+                    success: false
+                    message: Password must be at least 8 characters long
+                    data: null
+
+  /api/v1/admin/dashboard-stats:
+    get:
+      tags:
+        - Admin
+      summary: Get admin dashboard statistics
+      description: Fetch comprehensive dashboard statistics including users, deposits, withdrawals, games played, revenue, and pending transactions. Requires admin authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Dashboard statistics fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      totalUsers:
+                        type: object
+                        properties:
+                          count:
+                            type: number
+                            example: 1234
+                          percentageChange:
+                            type: number
+                            example: 12.5
+                            description: Percentage change vs last month
+                          trend:
+                            type: string
+                            enum: [up, down]
+                            example: up
+                      activeUsers:
+                        type: object
+                        properties:
+                          count:
+                            type: number
+                            example: 856
+                          percentageChange:
+                            type: number
+                            example: 8.2
+                          trend:
+                            type: string
+                            enum: [up, down]
+                            example: up
+                      totalDeposits:
+                        type: object
+                        properties:
+                          amount:
+                            type: number
+                            example: 1250000
+                            description: Total deposits in current month
+                          percentageChange:
+                            type: number
+                            example: 15.3
+                          trend:
+                            type: string
+                            enum: [up, down]
+                            example: up
+                      totalWithdrawals:
+                        type: object
+                        properties:
+                          amount:
+                            type: number
+                            example: 850000
+                            description: Total withdrawals in current month
+                          percentageChange:
+                            type: number
+                            example: -5.1
+                          trend:
+                            type: string
+                            enum: [up, down]
+                            example: down
+                      gamesPlayed:
+                        type: object
+                        properties:
+                          count:
+                            type: number
+                            example: 5678
+                          percentageChange:
+                            type: number
+                            example: 22.8
+                          trend:
+                            type: string
+                            enum: [up, down]
+                            example: up
+                      platformRevenue:
+                        type: object
+                        properties:
+                          amount:
+                            type: number
+                            example: 125000
+                            description: Platform revenue (Deposits - Withdrawals - Game Wins)
+                          percentageChange:
+                            type: number
+                            example: 18.7
+                          trend:
+                            type: string
+                            enum: [up, down]
+                            example: up
+                      pendingWithdrawals:
+                        type: object
+                        properties:
+                          count:
+                            type: number
+                            example: 15
+                      pendingDeposits:
+                        type: object
+                        properties:
+                          count:
+                            type: number
+                            example: 8
+        '401':
+          description: Unauthorized - Invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/signin:
+    post:
+      tags:
+        - Admin
+      summary: Admin login
+      description: Authenticate admin with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@winvest.com
+                  description: Admin email address
+                password:
+                  type: string
+                  format: password
+                  example: AdminSecure123!
+                  description: Admin password
+      responses:
+        '200':
+          description: Admin login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Admin Signed In
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: 60d5ec49f8d2e63a4c8e9a1a
+                      name:
+                        type: string
+                        example: Admin User
+                      email:
+                        type: string
+                        example: admin@winvest.com
+                      role:
+                        type: string
+                        example: admin
+                      token:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          refreshToken:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          accessTokenExpiry:
+                            type: string
+                            format: date-time
+                          refreshTokenExpiry:
+                            type: string
+                            format: date-time
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '401':
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Invalid email or password
+                  data:
+                    type: null
+                    example: null
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/recent-transactions:
+    get:
+      tags:
+        - Admin
+      summary: Get recent transactions
+      description: Fetch recent transactions for admin dashboard with user details, type, amount, and status
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Number of transactions to fetch (default 10)
+      responses:
+        '200':
+          description: Recent transactions fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Recent transactions fetched successfully
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user:
+                          type: string
+                          example: John Doe
+                        email:
+                          type: string
+                          example: john@example.com
+                        type:
+                          type: string
+                          enum: [deposit, withdrawal, game_win, game_lose, roi_credit, referral_bonus]
+                          example: deposit
+                        amount:
+                          type: number
+                          example: 5000
+                        currency:
+                          type: string
+                          example: USDT
+                        status:
+                          type: string
+                          enum: [completed, pending, failed]
+                          example: completed
+                        transactionId:
+                          type: string
+                          example: TX20260118123456
+                        date:
+                          type: string
+                          format: date-time
+                          example: '2026-01-18T10:30:00.000Z'
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/recent-games:
+    get:
+      tags:
+        - Admin
+      summary: Get recent games
+      description: Fetch recent games for admin dashboard with user details, game type, bet amount, and result
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Number of games to fetch (default 10)
+      responses:
+        '200':
+          description: Recent games fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Recent games fetched successfully
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user:
+                          type: string
+                          example: John Doe
+                        email:
+                          type: string
+                          example: john@example.com
+                        game:
+                          type: string
+                          enum: [Color, Dice]
+                          example: Color
+                        bet:
+                          type: number
+                          example: 100
+                        currency:
+                          type: string
+                          example: USDT
+                        result:
+                          type: string
+                          enum: [win, lose]
+                          example: win
+                        winAmount:
+                          type: number
+                          example: 100
+                        gameId:
+                          type: string
+                          example: GAME20260118123456
+                        date:
+                          type: string
+                          format: date-time
+                          example: '2026-01-18T10:30:00.000Z'
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/game-configs:
+    get:
+      tags:
+        - Admin
+      summary: Get game configurations
+      description: |
+        Fetch game configurations. Requires authentication.
+        - Get all game configs: Call without query parameters
+        - Get specific game config: Use ?gameType=COLOR_CHANGER or ?gameType=DICE_ROLL
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: gameType
+          schema:
+            type: string
+            enum: [COLOR_CHANGER, DICE_ROLL]
+          required: false
+          description: Filter by specific game type (optional)
+          example: COLOR_CHANGER
+      responses:
+        '200':
+          description: Game configurations fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Game configurations fetched successfully
+                  data:
+                    oneOf:
+                      - type: object
+                        description: Object with configs array and metrics (when gameType not specified)
+                        properties:
+                          configs:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/GameConfig'
+                          metrics:
+                            type: object
+                            properties:
+                              activeConfigs:
+                                type: number
+                                example: 2
+                                description: Number of active game configurations
+                              totalPlayers:
+                                type: number
+                                example: 2100
+                                description: Total number of players/users
+                              totalPlayersFormatted:
+                                type: string
+                                example: '2.1K+'
+                                description: Formatted player count (e.g., "2.1K+" for 2100+ players)
+                      - type: object
+                        description: Single game config with metrics (when gameType specified)
+                        allOf:
+                          - $ref: '#/components/schemas/GameConfig'
+                          - type: object
+                            properties:
+                              metrics:
+                                type: object
+                                properties:
+                                  activeConfigs:
+                                    type: number
+                                    example: 2
+                                  totalPlayers:
+                                    type: number
+                                    example: 2100
+                                  totalPlayersFormatted:
+                                    type: string
+                                    example: '2.1K+'
+                    description: Game configuration(s) with metrics
+              examples:
+                allConfigs:
+                  value:
+                    success: true
+                    message: 'Game configurations fetched successfully'
+                    data:
+                      configs:
+                        - _id: 60d5ec49f8d2e63a4c8e9a1a
+                          gameType: COLOR_CHANGER
+                          gameName: Color Changer
+                          maxUserProfit: 25
+                          maxUserLoss: 25
+                          winProbability: 0.4
+                          winMultiplier: 2
+                          platformBalanceBuffer: 1.1
+                          maxSmallWinAmount: 5
+                          minBetAmount: 1
+                          maxBetAmount: 25
+                          isActive: true
+                          metadata:
+                            description: 'Select a color (RED, GREEN, or BLUE) and place your bet. Win 2x your bet amount!'
+                            rules:
+                              - 'Select one of three colors: RED, GREEN, or BLUE'
+                              - 'Bet amount must be between 1 and 25'
+                              - 'Win multiplier: 2x your bet amount'
+                              - 'Maximum profit: $25'
+                              - 'Maximum loss: $25'
+                          createdAt: '2024-01-01T00:00:00.000Z'
+                          updatedAt: '2024-01-01T00:00:00.000Z'
+                        - _id: 60d5ec49f8d2e63a4c8e9a1b
+                          gameType: DICE_ROLL
+                          gameName: Dice Roll
+                          maxUserProfit: 25
+                          maxUserLoss: 25
+                          winProbability: 0.4
+                          winMultiplier: 2
+                          platformBalanceBuffer: 1.1
+                          maxSmallWinAmount: 5
+                          minBetAmount: 1
+                          maxBetAmount: 25
+                          isActive: true
+                          metadata:
+                            description: 'Roll the dice and predict the outcome. Win 2x your bet amount!'
+                          createdAt: '2024-01-01T00:00:00.000Z'
+                          updatedAt: '2024-01-01T00:00:00.000Z'
+                      metrics:
+                        activeConfigs: 2
+                        totalPlayers: 2100
+                        totalPlayersFormatted: '2.1K+'
+                singleConfig:
+                  value:
+                    success: true
+                    message: 'Game configuration fetched successfully'
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      gameType: COLOR_CHANGER
+                      gameName: Color Changer
+                      maxUserProfit: 25
+                      maxUserLoss: 25
+                      winProbability: 0.4
+                      winMultiplier: 2
+                      platformBalanceBuffer: 1.1
+                      maxSmallWinAmount: 5
+                      minBetAmount: 1
+                      maxBetAmount: 25
+                      isActive: true
+                      metadata:
+                        description: 'Select a color (RED, GREEN, or BLUE) and place your bet. Win 2x your bet amount!'
+                        rules:
+                          - 'Select one of three colors: RED, GREEN, or BLUE'
+                          - 'Bet amount must be between 1 and 25'
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T00:00:00.000Z'
+                      metrics:
+                        activeConfigs: 2
+                        totalPlayers: 2100
+                        totalPlayersFormatted: '2.1K+'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    message: Authentication token is required
+                    data: null
+        '404':
+          description: Game configuration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Game configuration not found for COLOR_CHANGER
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/currency:
+    post:
+      tags:
+        - Admin
+      summary: Add a new currency
+      description: |
+        Create a new currency with symbol, name, chain, color code, and image.
+        Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - symbol
+                - name
+                - chain
+                - depositAddress
+              properties:
+                symbol:
+                  type: string
+                  enum: [TRX, BNB, ETH, SOL]
+                  example: TRX
+                  description: Currency symbol (must be unique)
+                name:
+                  type: string
+                  example: Tron
+                  description: Currency name
+                chain:
+                  type: string
+                  enum: [TRC20, BEP20, ERC20, POLYGON]
+                  example: TRC20
+                  description: Blockchain chain
+                colorCode:
+                  type: string
+                  example: '#FF0000'
+                  description: Hex color code for UI (e.g., #FF0000 or #F00)
+                image:
+                  type: string
+                  example: https://res.cloudinary.com/example/image/upload/v1234567890/currency/trx.png
+                  description: URL to currency image/icon (upload via /api/v1/helper/upload-image first)
+                depositAddress:
+                  type: string
+                  example: TXYZabcdefghijklmnopqrstuvwxyz123456
+                  description: Wallet address for receiving deposits (required)
+                minimumDepositAmount:
+                  type: number
+                  example: 10
+                  default: 0
+                  description: Minimum deposit amount
+                minimumWithdrawalAmount:
+                  type: number
+                  example: 20
+                  default: 0
+                  description: Minimum withdrawal amount
+                depositFee:
+                  type: number
+                  example: 2
+                  default: 0
+                  description: Deposit fee
+                depositFeeType:
+                  type: string
+                  enum: [percentage, fixed]
+                  example: percentage
+                  default: percentage
+                  description: Deposit fee type
+                withdrawalFee:
+                  type: number
+                  example: 1
+                  default: 0
+                  description: Withdrawal fee
+                withdrawalFeeType:
+                  type: string
+                  enum: [percentage, fixed]
+                  example: fixed
+                  default: percentage
+                  description: Withdrawal fee type
+                isActive:
+                  type: boolean
+                  example: true
+                  default: true
+                  description: Whether the currency is active
+      responses:
+        '201':
+          description: Currency added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Currency added successfully
+                  data:
+                    $ref: '#/components/schemas/Currency'
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Currency added successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      symbol: TRX
+                      name: Tron
+                      chain: TRC20
+                      colorCode: '#FF0000'
+                      image: https://res.cloudinary.com/example/image/upload/v1234567890/currency/trx.png
+                      depositAddress: TXYZabcdefghijklmnopqrstuvwxyz123456
+                      minimumDepositAmount: 10
+                      minimumWithdrawalAmount: 20
+                      depositFee: 2
+                      depositFeeType: percentage
+                      withdrawalFee: 1
+                      withdrawalFeeType: fixed
+                      isActive: true
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T00:00:00.000Z'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  value:
+                    success: false
+                    message: 'Symbol, name, chain, and depositAddress are required fields'
+                    data: null
+                invalidSymbol:
+                  value:
+                    success: false
+                    message: 'Symbol must be one of: TRX, BNB, ETH, SOL'
+                    data: null
+                invalidColorCode:
+                  value:
+                    success: false
+                    message: Color code must be a valid hex color (e.g., #FF0000 or #F00)
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - currency already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                conflict:
+                  value:
+                    success: false
+                    message: Currency with symbol TRX already exists
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/system-config:
+    get:
+      tags:
+        - Admin
+      summary: Get system configuration
+      description: |
+        Retrieve the current system configuration settings including:
+        - Dark Mode (enable/disable)
+        - Push Notification (enable/disable)
+        - 2FA (enable/disable)
+        - Biometric Login (enable/disable)
+        - Maintenance Mode (enable/disable)
+        - Maintenance Message (optional)
+        Requires authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: System configuration fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: System configuration fetched successfully
+                  data:
+                    $ref: '#/components/schemas/SystemConfig'
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: System configuration fetched successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      darkMode: false
+                      pushNotification: true
+                      twoFA: false
+                      biometricLogin: false
+                      maintenance: false
+                      maintenanceMessage: null
+                      supportEmail: 'support@winvest.com'
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T00:00:00.000Z'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Admin
+      summary: Update system configuration
+      description: |
+        Update system configuration settings. All fields are optional - only provided fields will be updated.
+        Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                darkMode:
+                  type: boolean
+                  example: true
+                  description: Enable/disable dark mode
+                pushNotification:
+                  type: boolean
+                  example: true
+                  description: Enable/disable push notifications
+                twoFA:
+                  type: boolean
+                  example: true
+                  description: Enable/disable two-factor authentication
+                biometricLogin:
+                  type: boolean
+                  example: false
+                  description: Enable/disable biometric login
+                maintenance:
+                  type: boolean
+                  example: false
+                  description: Enable/disable maintenance mode
+                maintenanceMessage:
+                  type: string
+                  nullable: true
+                  example: 'System is under maintenance. Please check back later.'
+                  description: Optional maintenance message (shown when maintenance mode is enabled)
+                supportEmail:
+                  type: string
+                  example: 'support@winvest.com'
+                  description: Support contact email address
+      responses:
+        '200':
+          description: System configuration updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: System configuration updated successfully
+                  data:
+                    $ref: '#/components/schemas/SystemConfig'
+              examples:
+                updateAll:
+                  value:
+                    success: true
+                    message: System configuration updated successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      darkMode: true
+                      pushNotification: true
+                      twoFA: true
+                      biometricLogin: true
+                      maintenance: false
+                      maintenanceMessage: null
+                      supportEmail: 'support@winvest.com'
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T12:00:00.000Z'
+                updateSingle:
+                  value:
+                    success: true
+                    message: System configuration updated successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      darkMode: true
+                      pushNotification: true
+                      twoFA: false
+                      biometricLogin: false
+                      maintenance: false
+                      maintenanceMessage: null
+                      supportEmail: 'support@winvest.com'
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T12:00:00.000Z'
+                maintenanceMode:
+                  value:
+                    success: true
+                    message: System configuration updated successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      darkMode: false
+                      pushNotification: true
+                      twoFA: false
+                      biometricLogin: false
+                      maintenance: true
+                      maintenanceMessage: 'System is under maintenance. Please check back later.'
+                      supportEmail: 'support@winvest.com'
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T12:00:00.000Z'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                noFields:
+                  value:
+                    success: false
+                    message: At least one configuration field must be provided
+                    data: null
+                invalidBoolean:
+                  value:
+                    success: false
+                    message: darkMode must be a boolean value
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/investment-config:
+    get:
+      tags:
+        - Admin
+      summary: Get investment configuration
+      description: |
+        Retrieve the current investment configuration (Super Admin only).
+        Returns direct referral commission %, indirect referral commission %, monthly ROI %, and computed daily ROI rate.
+        These rates are used for deposit referral bonuses and daily ROI calculations.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Investment configuration fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Investment configuration fetched successfully
+                  data:
+                    $ref: '#/components/schemas/InvestmentConfig'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Super Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Admin
+      summary: Update investment configuration
+      description: |
+        Update investment rates (Super Admin only). All fields are optional - only provided fields will be updated.
+        - directCommissionRate: % credited to direct referrer on deposits
+        - indirectCommissionRate: % credited to indirect referrer on deposits
+        - monthlyRoiRate: % monthly ROI (applied daily, compounded)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                directCommissionRate:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+                  example: 3
+                  description: Direct referral commission (%)
+                indirectCommissionRate:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+                  example: 1.5
+                  description: Indirect referral commission (%)
+                monthlyRoiRate:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+                  example: 8
+                  description: Monthly ROI (%)
+      responses:
+        '200':
+          description: Investment configuration updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Investment configuration updated successfully
+                  data:
+                    $ref: '#/components/schemas/InvestmentConfig'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Super Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/test-deposit:
+    post:
+      tags:
+        - Admin
+      summary: Create test deposit (No blockchain verification)
+      description: |
+        Create a test deposit for a user without blockchain verification. This endpoint is for testing purposes only.
+        
+        **Flow:**
+        1. Validates currency and minimum deposit amount
+        2. Calculates and deducts deposit fee
+        3. Splits net amount 50-50 between gamingWallet and roiWallet
+        4. Creates ROI investment with 7-day lock-in period
+        5. Processes referral bonuses (Direct: 3%, Indirect: 1.5%)
+        6. Credits amounts to respective wallets
+        
+        **Note:** This endpoint bypasses blockchain verification and should only be used in development/testing environments.
+        Requires admin authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currency
+                - amount
+              properties:
+                currency:
+                  type: string
+                  enum: [TRX, BNB, ETH, SOL]
+                  example: TRX
+                  description: Currency symbol
+                amount:
+                  type: number
+                  minimum: 0.00000001
+                  example: 100
+                  description: Deposit amount
+      responses:
+        '200':
+          description: Test deposit successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'TEST Deposit successful! 49.5 TRX credited to Gaming Wallet and 49.5 TRX credited to ROI Wallet (Fee: 1 TRX). Note: This is a test deposit without blockchain verification.'
+                  data:
+                    $ref: '#/components/schemas/Transaction'
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: 'TEST Deposit successful! 49.5 TRX credited to Gaming Wallet and 49.5 TRX credited to ROI Wallet (Fee: 1 TRX). Note: This is a test deposit without blockchain verification.'
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1b
+                      transactionId: TXN20241228143025457
+                      userId: 60d5ec49f8d2e63a4c8e9a1a
+                      category: DEPOSIT
+                      status: COMPLETED
+                      amount: 100
+                      currency: TRX
+                      network: TRC20
+                      fee: 1
+                      netAmount: 99
+                      fromAddress: TEST_ADDRESS
+                      toAddress: TXYZabcdefghijklmnopqrstuvwxyz123456
+                      transactionHash: TEST_1703773825000_abc123
+                      blockchainVerified: false
+                      metadata:
+                        gamingWalletAmount: 49.5
+                        roiWalletAmount: 49.5
+                        notes: 'TEST DEPOSIT - Processed successfully without blockchain verification'
+                      createdAt: '2024-12-28T14:30:25.000Z'
+                      updatedAt: '2024-12-28T14:30:25.000Z'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  value:
+                    success: false
+                    message: 'Missing required fields: currency, amount'
+                    data: null
+                minimumAmount:
+                  value:
+                    success: false
+                    message: 'Minimum deposit amount for TRX is 10'
+                    data: null
+                invalidAmount:
+                  value:
+                    success: false
+                    message: 'Amount must be greater than 0'
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/trigger-roi-calculation:
+    post:
+      tags:
+        - Admin
+      summary: Trigger ROI calculation manually
+      description: |
+        Manually trigger the daily ROI calculation process. This endpoint processes all active ROI investments,
+        calculates daily ROI earnings, and credits them to users' ROI wallets.
+        
+        **Use Cases:**
+        - Testing ROI distribution
+        - Manual trigger if cron job fails
+        - Admin dashboard integration
+        
+        Requires admin authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ROI calculation completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'ROI calculation completed successfully. Processed 10 investments and credited 2.57000000 USDT'
+                  data:
+                    type: object
+                    properties:
+                      processed:
+                        type: number
+                        example: 10
+                      totalCredited:
+                        type: number
+                        example: 2.57
+                      errors:
+                        type: array
+                        items:
+                          type: string
+                        example: []
+                      timestamp:
+                        type: string
+                        format: date-time
+                        example: '2024-12-28T14:30:25.000Z'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/admin/currencies:
+    get:
+      tags:
+        - Admin
+      summary: Get currency list
+      description: Fetch all currencies (optionally active only). Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: activeOnly
+          schema:
+            type: boolean
+            default: false
+          description: If true, return only active currencies
+      responses:
+        '200':
+          description: Currencies fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Currencies fetched successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Currency'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/currencies/{id}:
+    put:
+      tags:
+        - Admin
+      summary: Update currency
+      description: Update an existing currency by ID. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Currency ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                chain:
+                  type: string
+                  enum: [TRC20, BEP20, ERC20, POLYGON]
+                colorCode:
+                  type: string
+                  nullable: true
+                image:
+                  type: string
+                  nullable: true
+                depositAddress:
+                  type: string
+                minimumDepositAmount:
+                  type: number
+                minimumWithdrawalAmount:
+                  type: number
+                depositFee:
+                  type: number
+                depositFeeType:
+                  type: string
+                  enum: [percentage, fixed]
+                withdrawalFee:
+                  type: number
+                withdrawalFeeType:
+                  type: string
+                  enum: [percentage, fixed]
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Currency updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Currency updated successfully
+                  data:
+                    $ref: '#/components/schemas/Currency'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Currency not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Admin
+      summary: Delete currency
+      description: Delete a currency by ID. Requires authentication. This cannot be undone.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Currency ID
+      responses:
+        '200':
+          description: Currency deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Currency deleted successfully
+                  data:
+                    type: null
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Currency not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/games/stats:
+    get:
+      tags:
+        - Admin
+      summary: Get game statistics
+      description: Fetch gaming management stats (total games, total bets, total wins, total losses, platform profit). Requires authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Game stats fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      totalGames:
+                        type: number
+                      totalBets:
+                        type: number
+                      totalWins:
+                        type: number
+                      totalLosses:
+                        type: number
+                      platformProfit:
+                        type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/game-configs/{id}:
+    put:
+      tags:
+        - Admin
+      summary: Update game configuration
+      description: Update a game configuration by ID. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Game config ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                gameName:
+                  type: string
+                maxUserProfit:
+                  type: number
+                maxUserLoss:
+                  type: number
+                winProbability:
+                  type: number
+                winMultiplier:
+                  type: number
+                platformBalanceBuffer:
+                  type: number
+                maxSmallWinAmount:
+                  type: number
+                minBetAmount:
+                  type: number
+                maxBetAmount:
+                  type: number
+                isActive:
+                  type: boolean
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Game config updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/GameConfig'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Game configuration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/transactions:
+    get:
+      tags:
+        - Admin
+      summary: Get transaction list
+      description: Fetch paginated transactions with optional filters (skip, limit, type, status, search). Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+          description: Max records to return
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [deposit, withdrawal, game, referral, roi]
+          description: Filter by transaction type
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, completed, rejected, failed]
+          description: Filter by status
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by transaction ID or user
+      responses:
+        '200':
+          description: Transactions fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/deposit-stats:
+    get:
+      tags:
+        - Admin
+      summary: Get deposit statistics
+      description: Fetch deposit stats per currency (total, pending, approved today, rejected today). Requires authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Deposit stats fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        symbol:
+                          type: string
+                        name:
+                          type: string
+                        totalDeposits:
+                          type: number
+                        pendingDeposits:
+                          type: number
+                        approvedToday:
+                          type: number
+                        rejectedToday:
+                          type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/deposits:
+    get:
+      tags:
+        - Admin
+      summary: Get deposit list
+      description: Fetch paginated deposits with optional filters (skip, limit, currency, fromDate, toDate, status, search). Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: currency
+          schema:
+            type: string
+          description: Filter by currency symbol
+        - in: query
+          name: fromDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: toDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, completed, failed, rejected]
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposits fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                  total:
+                    type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/deposits/{id}/approve:
+    patch:
+      tags:
+        - Admin
+      summary: Approve deposit
+      description: Approve a pending deposit by ID. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposit approved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Deposit not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/deposits/{id}/reject:
+    patch:
+      tags:
+        - Admin
+      summary: Reject deposit
+      description: Reject a pending deposit by ID. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: reason
+          schema:
+            type: string
+          description: Rejection reason (optional in body)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Deposit rejected successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Deposit not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Get user list
+      description: Fetch paginated users with optional filters. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive, suspended]
+      responses:
+        '200':
+          description: Users fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                  total:
+                    type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Admin
+      summary: Create user
+      description: Create a new user. Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - phone
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users/{id}:
+    put:
+      tags:
+        - Admin
+      summary: Update user
+      description: Update a user by ID. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users/{id}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update user status
+      description: Update user status (active, inactive, suspended). Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive, suspended]
+      responses:
+        '200':
+          description: User status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/withdrawal-stats:
+    get:
+      tags:
+        - Admin
+      summary: Get withdrawal statistics
+      description: Fetch withdrawal stats. Requires authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Withdrawal stats fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/withdrawals:
+    get:
+      tags:
+        - Admin
+      summary: Get withdrawal list
+      description: Fetch paginated withdrawals with optional filters. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Withdrawals fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                  total:
+                    type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/withdrawal/process:
+    post:
+      tags:
+        - Admin
+      summary: Process withdrawal
+      description: Process (approve/reject) a withdrawal. Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - withdrawalId
+                - action
+              properties:
+                withdrawalId:
+                  type: string
+                action:
+                  type: string
+                  enum: [approve, reject]
+                reason:
+                  type: string
+                  description: Required when action is reject
+      responses:
+        '200':
+          description: Withdrawal processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Withdrawal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/wallet-stats:
+    get:
+      tags:
+        - Admin
+      summary: Get wallet statistics
+      description: Fetch wallet stats (total balance, total ROI wallet, total game wallet). Requires authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Wallet stats fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      totalBalance:
+                        type: number
+                      totalRoiWalletBalance:
+                        type: number
+                      totalGameWalletBalance:
+                        type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/wallets:
+    get:
+      tags:
+        - Admin
+      summary: Get wallet list
+      description: Fetch paginated user wallets with optional filters. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Wallets fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                  total:
+                    type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/wallets/adjust-funds:
+    post:
+      tags:
+        - Admin
+      summary: Adjust wallet funds
+      description: Add or deduct funds from a user's gaming or ROI wallet. Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - walletType
+                - type
+                - amount
+                - description
+              properties:
+                userId:
+                  type: string
+                walletType:
+                  type: string
+                  enum: [gamingWallet, roiWallet]
+                type:
+                  type: string
+                  enum: [add, deduct]
+                amount:
+                  type: number
+                  minimum: 0
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Funds adjusted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User/wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/notifications/send:
+    post:
+      tags:
+        - Admin
+      summary: Send notification to users
+      description: Send a notification to users. Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                message:
+                  type: string
+                userIds:
+                  type: array
+                  items:
+                    type: string
+                targetAll:
+                  type: boolean
+      responses:
+        '200':
+          description: Notification sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

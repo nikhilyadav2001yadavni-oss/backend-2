@@ -1,0 +1,324 @@
+paths:
+  /api/v1/notification/list:
+    get:
+      tags:
+        - Notification
+      summary: Get user notifications
+      description: Retrieve paginated list of notifications for the authenticated user. Can filter by status (READ, UNREAD, ALL).
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (starts at 1)
+          example: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of notifications per page (max 100)
+          example: 20
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [READ, UNREAD, ALL]
+            default: ALL
+          description: Filter notifications by status
+          example: UNREAD
+      responses:
+        '200':
+          description: Notifications fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Notifications fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      notifications:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: 60d5ec49f8d2e63a4c8e9a1b
+                            userId:
+                              type: string
+                              example: 60d5ec49f8d2e63a4c8e9a1a
+                            title:
+                              type: string
+                              example: Deposit Successful
+                            message:
+                              type: string
+                              example: Your deposit of 100 TRX has been processed successfully
+                            type:
+                              type: string
+                              enum: [DEPOSIT, WITHDRAWAL, GAME_WIN, GAME_LOSE, ROI_CREDIT, REFERRAL_BONUS, SYSTEM, PROMOTION]
+                              example: DEPOSIT
+                            status:
+                              type: string
+                              enum: [READ, UNREAD]
+                              example: UNREAD
+                            priority:
+                              type: string
+                              enum: [LOW, MEDIUM, HIGH, URGENT]
+                              example: MEDIUM
+                            channels:
+                              type: array
+                              items:
+                                type: string
+                                enum: [EMAIL, SMS, PUSH, IN_APP]
+                              example: [IN_APP, EMAIL]
+                            metadata:
+                              type: object
+                              example: { transactionId: 'TXN20251228143025457' }
+                            createdAt:
+                              type: string
+                              format: date-time
+                            updatedAt:
+                              type: string
+                              format: date-time
+                      totalCount:
+                        type: integer
+                        example: 45
+                        description: Total number of notifications matching the filter
+                      currentPage:
+                        type: integer
+                        example: 1
+                        description: Current page number
+                      totalPages:
+                        type: integer
+                        example: 3
+                        description: Total number of pages available
+        '400':
+          description: Bad request - Invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidPagination:
+                  value:
+                    success: false
+                    message: Invalid pagination parameters. Page must be >= 1, limit must be between 1 and 100
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/notification/unread-count:
+    get:
+      tags:
+        - Notification
+      summary: Get unread notification count
+      description: Get the total count of unread notifications for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Unread count fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Unread count fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      unreadCount:
+                        type: integer
+                        example: 5
+                        description: Total number of unread notifications
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/notification/{notificationId}/read:
+    patch:
+      tags:
+        - Notification
+      summary: Mark notification as read
+      description: Mark a specific notification as read
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+          description: Notification ID
+          example: 60d5ec49f8d2e63a4c8e9a1b
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Notification marked as read
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: 60d5ec49f8d2e63a4c8e9a1b
+                      status:
+                        type: string
+                        example: READ
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '400':
+          description: Bad request - Notification ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Notification not found
+                    data: null
+
+  /api/v1/notification/read-all:
+    patch:
+      tags:
+        - Notification
+      summary: Mark all notifications as read
+      description: Mark all unread notifications as read for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 5 notifications marked as read
+                  data:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        example: 5
+                        description: Number of notifications marked as read
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/notification/{notificationId}:
+    delete:
+      tags:
+        - Notification
+      summary: Delete notification
+      description: Delete a specific notification. User can only delete their own notifications.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+          description: Notification ID
+          example: 60d5ec49f8d2e63a4c8e9a1b
+      responses:
+        '200':
+          description: Notification deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Notification deleted successfully
+                  data:
+                    type: null
+                    example: null
+        '400':
+          description: Bad request - Notification ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Notification not found
+                    data: null
+

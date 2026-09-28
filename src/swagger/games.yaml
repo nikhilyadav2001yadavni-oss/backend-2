@@ -1,0 +1,1301 @@
+paths:
+  /api/v1/games/bet/color-changer:
+    post:
+      tags:
+        - Games
+      summary: Place bet for Color Changer game
+      description: |
+        Place a bet on the Color Changer game. User selects a color (RED, GREEN, or BLUE) and bets an amount (1-25).
+        The game uses a three-tier decision logic to determine win/loss:
+        1. User profit/loss limits (max $25 profit, max $25 loss)
+        2. Platform risk check (ensures platform has sufficient balance)
+        3. Normal gameplay with controlled probability (40% win chance)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - color
+                - betAmount
+              properties:
+                color:
+                  type: string
+                  enum: [RED, GREEN, BLUE]
+                  example: RED
+                  description: Color selected by user
+                betAmount:
+                  type: number
+                  minimum: 1
+                  maximum: 25
+                  example: 10
+                  description: Bet amount (must be integer between 1 and 25)
+      responses:
+        '200':
+          description: Bet placed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Congratulations! You won 20 USDT!
+                  data:
+                    type: object
+                    properties:
+                      gameId:
+                        type: string
+                        example: GAME20241228143025457
+                        description: Unique game ID
+                      result:
+                        type: string
+                        enum: [WIN, LOSE]
+                        example: WIN
+                        description: Game result
+                      userColor:
+                        type: string
+                        enum: [RED, GREEN, BLUE]
+                        example: RED
+                        description: Color selected by user
+                      winningColor:
+                        type: string
+                        enum: [RED, GREEN, BLUE]
+                        example: GREEN
+                        description: Winning color (for display)
+                      betAmount:
+                        type: number
+                        example: 10
+                        description: Amount bet
+                      winAmount:
+                        type: number
+                        example: 20
+                        description: Amount won (if result is WIN)
+                      lossAmount:
+                        type: number
+                        example: 10
+                        description: Amount lost (if result is LOSE)
+                      userProfitLoss:
+                        type: number
+                        example: 15
+                        description: User's total profit/loss after this game
+                      gamingWalletBalance:
+                        type: number
+                        example: 500
+                        description: Updated gaming wallet balance
+              examples:
+                win:
+                  value:
+                    success: true
+                    message: Congratulations! You won 20 USDT!
+                    data:
+                      gameId: GAME20241228143025457
+                      result: WIN
+                      userColor: RED
+                      winningColor: GREEN
+                      betAmount: 10
+                      winAmount: 20
+                      userProfitLoss: 15
+                      gamingWalletBalance: 510
+                lose:
+                  value:
+                    success: true
+                    message: Sorry, you lost 10 USDT. Better luck next time!
+                    data:
+                      gameId: GAME20241228143025458
+                      result: LOSE
+                      userColor: BLUE
+                      winningColor: RED
+                      betAmount: 10
+                      lossAmount: 10
+                      userProfitLoss: -5
+                      gamingWalletBalance: 490
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidColor:
+                  value:
+                    success: false
+                    message: Color must be RED, GREEN, or BLUE
+                    data: null
+                invalidBetAmount:
+                  value:
+                    success: false
+                    message: Bet amount must be an integer between 1 and 25
+                    data: null
+                insufficientBalance:
+                  value:
+                    success: false
+                    message: Insufficient balance in gaming wallet
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Authentication required
+                data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/games/bet/dice-roll:
+    post:
+      tags:
+        - Games
+      summary: Place bet for Dice Roll game
+      description: |
+        Place a bet on the Dice Roll game. User can bet on:
+        - Single Numbers: Select a single number (1-6)
+        - Number Range: Select a range on the die face (1–6); the range may include 1, 2, or 3 numbers (e.g. 2–2, 2–3, 1–3), never more than three
+        Bet amount must be between 1-25.
+        The game uses a three-tier decision logic to determine win/loss:
+        1. User profit/loss limits (max $25 profit, max $25 loss)
+        2. Platform risk check (ensures platform has sufficient balance)
+        3. Normal gameplay with controlled probability (40% win chance)
+        If dice result matches the bet AND system allows win, user wins 2x bet amount.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - betType
+                - betAmount
+              properties:
+                betType:
+                  type: string
+                  enum: [SINGLE_NUMBERS, NUMBER_RANGE]
+                  example: SINGLE_NUMBERS
+                  description: Type of bet - single numbers or number range
+                betAmount:
+                  type: number
+                  minimum: 1
+                  maximum: 25
+                  example: 10
+                  description: Bet amount (must be integer between 1 and 25)
+                selectedNumber:
+                  type: number
+                  minimum: 1
+                  maximum: 6
+                  example: 3
+                  description: Single number (1-6) for single numbers bet. Required if betType is SINGLE_NUMBERS
+                selectedRange:
+                  type: object
+                  properties:
+                    from:
+                      type: number
+                      minimum: 1
+                      maximum: 6
+                      example: 2
+                      description: Start of inclusive range (1-6)
+                    to:
+                      type: number
+                      minimum: 1
+                      maximum: 6
+                      example: 3
+                      description: End of inclusive range (1-6, must be >= from); at most 3 numbers total (`to - from` <= 2)
+                  example:
+                    from: 2
+                    to: 3
+                  description: Inclusive range of 1 to 3 consecutive integers (from through to). Required if betType is NUMBER_RANGE
+      responses:
+        '200':
+          description: Bet placed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Congratulations! Dice rolled 3. You won 20 USDT (2.0x)!
+                  data:
+                    type: object
+                    properties:
+                      gameId:
+                        type: string
+                        example: GAME20241228143025457
+                        description: Unique game ID
+                      result:
+                        type: string
+                        enum: [WIN, LOSE]
+                        example: WIN
+                        description: Game result
+                      betType:
+                        type: string
+                        enum: [SINGLE_NUMBERS, NUMBER_RANGE]
+                        example: SINGLE_NUMBERS
+                        description: Type of bet placed
+                      selectedNumber:
+                        type: number
+                        minimum: 1
+                        maximum: 6
+                        example: 3
+                        description: Selected number (if betType is SINGLE_NUMBERS)
+                      selectedRange:
+                        type: object
+                        properties:
+                          from:
+                            type: number
+                            example: 2
+                          to:
+                            type: number
+                            example: 4
+                        description: Selected inclusive range, at most 3 numbers (if betType is NUMBER_RANGE)
+                      diceResult:
+                        type: number
+                        minimum: 1
+                        maximum: 6
+                        example: 3
+                        description: The actual dice result (1-6)
+                      betAmount:
+                        type: number
+                        example: 10
+                        description: Amount bet
+                      winAmount:
+                        type: number
+                        example: 20
+                        description: Amount won (if result is WIN)
+                      lossAmount:
+                        type: number
+                        example: 10
+                        description: Amount lost (if result is LOSE)
+                      userProfitLoss:
+                        type: number
+                        example: 15
+                        description: User's total profit/loss after this game
+                      gamingWalletBalance:
+                        type: number
+                        example: 500
+                        description: Updated gaming wallet balance
+              examples:
+                winSingleNumbers:
+                  value:
+                    success: true
+                    message: 'Congratulations! Dice rolled 3. You won 20 USDT (2.0x)!'
+                    data:
+                      gameId: GAME20241228143025457
+                      result: WIN
+                      betType: SINGLE_NUMBERS
+                      selectedNumber: 3
+                      diceResult: 3
+                      betAmount: 10
+                      winAmount: 20
+                      userProfitLoss: 15
+                      gamingWalletBalance: 510
+                winNumberRange:
+                  value:
+                    success: true
+                    message: 'Congratulations! Dice rolled 4. You won 20 USDT (2.0x)!'
+                    data:
+                      gameId: GAME20241228143025458
+                      result: WIN
+                      betType: NUMBER_RANGE
+                      selectedRange:
+                        from: 2
+                        to: 4
+                      diceResult: 4
+                      betAmount: 10
+                      winAmount: 20
+                      userProfitLoss: 10
+                      gamingWalletBalance: 520
+                lose:
+                  value:
+                    success: true
+                    message: 'Sorry, dice rolled 1. You lost 10 USDT. Better luck next time!'
+                    data:
+                      gameId: GAME20241228143025459
+                      result: LOSE
+                      betType: SINGLE_NUMBERS
+                      selectedNumber: 3
+                      diceResult: 1
+                      betAmount: 10
+                      lossAmount: 10
+                      userProfitLoss: -5
+                      gamingWalletBalance: 490
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidBetType:
+                  value:
+                    success: false
+                    message: Bet type must be SINGLE_NUMBERS or NUMBER_RANGE
+                    data: null
+                missingSelectedNumber:
+                  value:
+                    success: false
+                    message: Selected number is required for single numbers bet
+                    data: null
+                invalidSelectedNumber:
+                  value:
+                    success: false
+                    message: Selected number must be an integer between 1 and 6
+                    data: null
+                missingSelectedRange:
+                  value:
+                    success: false
+                    message: Selected range is required for number range bet
+                    data: null
+                invalidRange:
+                  value:
+                    success: false
+                    message: Range values must be integers between 1 and 6
+                    data: null
+                invalidBetAmount:
+                  value:
+                    success: false
+                    message: Bet amount must be an integer between 1 and 25
+                    data: null
+                insufficientBalance:
+                  value:
+                    success: false
+                    message: Insufficient balance in gaming wallet
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Authentication required
+                data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/games/bet/dragon-tiger:
+    post:
+      tags:
+        - Games
+      summary: Place bet for Dragon Tiger game
+      description: |
+        Place a bet on the Dragon Tiger game. User can bet on DRAGON, TIGER, or TIE.
+        Two cards are dealt - one for Dragon and one for Tiger. Higher card value wins.
+        - Dragon/Tiger bets: 1:1 payout (2x multiplier - bet $10, win $20)
+        - Tie bets: 11:1 payout (12x multiplier - bet $10, win $120)
+        Bet amount must be between 1-25.
+        The game uses a three-tier decision logic to determine win/loss:
+        1. User profit/loss limits (max $25 profit, max $25 loss)
+        2. Platform risk check (ensures platform has sufficient balance)
+        3. Normal gameplay with controlled probability (40% win chance)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - betType
+                - betAmount
+              properties:
+                betType:
+                  type: string
+                  enum: [DRAGON, TIGER, TIE]
+                  example: DRAGON
+                  description: Bet type - DRAGON, TIGER, or TIE
+                betAmount:
+                  type: number
+                  minimum: 1
+                  maximum: 25
+                  example: 10
+                  description: Bet amount (must be integer between 1 and 25)
+      responses:
+        '200':
+          description: Bet placed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Congratulations! DRAGON won. You won 20 USDT (2.0x)!
+                  data:
+                    type: object
+                    properties:
+                      gameId:
+                        type: string
+                        example: GAME20241228143025457
+                        description: Unique game ID
+                      result:
+                        type: string
+                        enum: [WIN, LOSE]
+                        example: WIN
+                        description: Game result
+                      betType:
+                        type: string
+                        enum: [DRAGON, TIGER, TIE]
+                        example: DRAGON
+                        description: Type of bet placed
+                      dragonCard:
+                        type: object
+                        properties:
+                          suit:
+                            type: string
+                            example: Hearts
+                            description: Card suit
+                          rank:
+                            type: string
+                            example: King
+                            description: Card rank
+                          value:
+                            type: number
+                            example: 13
+                            description: Card value (Ace=1, 2-10=face value, Jack=11, Queen=12, King=13)
+                        description: Card dealt for Dragon
+                      tigerCard:
+                        type: object
+                        properties:
+                          suit:
+                            type: string
+                            example: Spades
+                          rank:
+                            type: string
+                            example: 7
+                          value:
+                            type: number
+                            example: 7
+                        description: Card dealt for Tiger
+                      winningSide:
+                        type: string
+                        enum: [DRAGON, TIGER, TIE]
+                        example: DRAGON
+                        description: The winning side
+                      betAmount:
+                        type: number
+                        example: 10
+                        description: Amount bet
+                      winAmount:
+                        type: number
+                        example: 20
+                        description: Amount won (if result is WIN)
+                      lossAmount:
+                        type: number
+                        example: 10
+                        description: Amount lost (if result is LOSE)
+                      userProfitLoss:
+                        type: number
+                        example: 15
+                        description: User's total profit/loss after this game
+                      gamingWalletBalance:
+                        type: number
+                        example: 500
+                        description: Updated gaming wallet balance
+              examples:
+                winDragon:
+                  value:
+                    success: true
+                    message: 'Congratulations! DRAGON won. You won 20 USDT (2.0x)!'
+                    data:
+                      gameId: GAME20241228143025457
+                      result: WIN
+                      betType: DRAGON
+                      dragonCard:
+                        suit: Hearts
+                        rank: King
+                        value: 13
+                      tigerCard:
+                        suit: Spades
+                        rank: 7
+                        value: 7
+                      winningSide: DRAGON
+                      betAmount: 10
+                      winAmount: 20
+                      userProfitLoss: 15
+                      gamingWalletBalance: 510
+                winTie:
+                  value:
+                    success: true
+                    message: 'Congratulations! TIE won. You won 120 USDT (12.0x)!'
+                    data:
+                      gameId: GAME20241228143025458
+                      result: WIN
+                      betType: TIE
+                      dragonCard:
+                        suit: Hearts
+                        rank: Ace
+                        value: 1
+                      tigerCard:
+                        suit: Spades
+                        rank: Ace
+                        value: 1
+                      winningSide: TIE
+                      betAmount: 10
+                      winAmount: 120
+                      userProfitLoss: 25
+                      gamingWalletBalance: 620
+                lose:
+                  value:
+                    success: true
+                    message: 'Sorry, TIGER won. You lost 10 USDT. Better luck next time!'
+                    data:
+                      gameId: GAME20241228143025459
+                      result: LOSE
+                      betType: DRAGON
+                      dragonCard:
+                        suit: Clubs
+                        rank: 5
+                        value: 5
+                      tigerCard:
+                        suit: Diamonds
+                        rank: 9
+                        value: 9
+                      winningSide: TIGER
+                      betAmount: 10
+                      lossAmount: 10
+                      userProfitLoss: -5
+                      gamingWalletBalance: 490
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidBetType:
+                  value:
+                    success: false
+                    message: Bet type must be DRAGON, TIGER, or TIE
+                    data: null
+                invalidBetAmount:
+                  value:
+                    success: false
+                    message: Bet amount must be an integer between 1 and 25
+                    data: null
+                insufficientBalance:
+                  value:
+                    success: false
+                    message: Insufficient balance in gaming wallet
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Authentication required
+                data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/games/bet/super-over:
+    post:
+      tags:
+        - Games
+      summary: Place bet for Super Over game
+      description: |
+        Place a bet on the Super Over cricket game. User predicts if total runs in 6 balls will be OVER or UNDER a threshold.
+        - Bet type: OVER or UNDER
+        - Run thresholds: 6, 8, 10, 12, 14, or 16 runs
+        - Bet amount: Between $10 and $500
+        - Payout: 2x multiplier (bet $10, win $20)
+        The game simulates 6 balls, each scoring 0-6 runs. Total runs are calculated and compared to the threshold.
+        The game uses a three-tier decision logic to determine win/loss:
+        1. User profit/loss limits (max $25 profit, max $25 loss)
+        2. Platform risk check (ensures platform has sufficient balance)
+        3. Normal gameplay with controlled probability (40% win chance)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - betType
+                - runThreshold
+                - betAmount
+              properties:
+                betType:
+                  type: string
+                  enum: [OVER, UNDER]
+                  example: OVER
+                  description: Bet type - OVER (total runs > threshold) or UNDER (total runs < threshold)
+                runThreshold:
+                  type: number
+                  enum: [6, 8, 10, 12, 14, 16]
+                  example: 8
+                  description: Run threshold to compare against (6, 8, 10, 12, 14, or 16)
+                betAmount:
+                  type: number
+                  minimum: 10
+                  maximum: 500
+                  example: 10
+                  description: Bet amount (must be integer between 10 and 500)
+      responses:
+        '200':
+          description: Bet placed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Congratulations! Score: 12 runs. You won 20 USDT (2.0x)!'
+                  data:
+                    type: object
+                    properties:
+                      gameId:
+                        type: string
+                        example: GAME20241228143025457
+                        description: Unique game ID
+                      result:
+                        type: string
+                        enum: [WIN, LOSE]
+                        example: WIN
+                        description: Game result
+                      betType:
+                        type: string
+                        enum: [OVER, UNDER]
+                        example: OVER
+                        description: Type of bet placed
+                      runThreshold:
+                        type: number
+                        enum: [6, 8, 10, 12, 14, 16]
+                        example: 8
+                        description: Run threshold selected
+                      ballScores:
+                        type: array
+                        items:
+                          type: number
+                          minimum: 0
+                          maximum: 6
+                        example: [4, 0, 2, 6, 0, 0]
+                        description: Array of 6 ball scores (runs per ball)
+                      totalRunsScored:
+                        type: number
+                        example: 12
+                        description: Total runs scored in the over
+                      betAmount:
+                        type: number
+                        example: 10
+                        description: Amount bet
+                      winAmount:
+                        type: number
+                        example: 20
+                        description: Amount won (if result is WIN)
+                      lossAmount:
+                        type: number
+                        example: 10
+                        description: Amount lost (if result is LOSE)
+                      userProfitLoss:
+                        type: number
+                        example: 15
+                        description: User's total profit/loss after this game
+                      gamingWalletBalance:
+                        type: number
+                        example: 500
+                        description: Updated gaming wallet balance
+              examples:
+                winOver:
+                  value:
+                    success: true
+                    message: 'Congratulations! Score: 12 runs. You won 20 USDT (2.0x)!'
+                    data:
+                      gameId: GAME20241228143025457
+                      result: WIN
+                      betType: OVER
+                      runThreshold: 8
+                      ballScores: [4, 0, 2, 6, 0, 0]
+                      totalRunsScored: 12
+                      betAmount: 10
+                      winAmount: 20
+                      userProfitLoss: 15
+                      gamingWalletBalance: 510
+                winUnder:
+                  value:
+                    success: true
+                    message: 'Congratulations! Score: 5 runs. You won 20 USDT (2.0x)!'
+                    data:
+                      gameId: GAME20241228143025458
+                      result: WIN
+                      betType: UNDER
+                      runThreshold: 10
+                      ballScores: [1, 0, 2, 1, 1, 0]
+                      totalRunsScored: 5
+                      betAmount: 10
+                      winAmount: 20
+                      userProfitLoss: 10
+                      gamingWalletBalance: 520
+                lose:
+                  value:
+                    success: true
+                    message: 'Sorry, Score: 14 runs. You lost 10 USDT. Better luck next time!'
+                    data:
+                      gameId: GAME20241228143025459
+                      result: LOSE
+                      betType: UNDER
+                      runThreshold: 10
+                      ballScores: [1, 6, 1, 2, 4, 0]
+                      totalRunsScored: 14
+                      betAmount: 10
+                      lossAmount: 10
+                      userProfitLoss: -5
+                      gamingWalletBalance: 490
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidBetType:
+                  value:
+                    success: false
+                    message: Bet type must be OVER or UNDER
+                    data: null
+                invalidRunThreshold:
+                  value:
+                    success: false
+                    message: 'Run threshold must be one of: 6, 8, 10, 12, 14, 16'
+                    data: null
+                invalidBetAmount:
+                  value:
+                    success: false
+                    message: Bet amount must be a positive integer
+                    data: null
+                betAmountOutOfRange:
+                  value:
+                    success: false
+                    message: Bet amount must be between 10 and 500
+                    data: null
+                insufficientBalance:
+                  value:
+                    success: false
+                    message: Insufficient balance in gaming wallet
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Authentication required
+                data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/games/bet/marble-race:
+    post:
+      tags:
+        - Games
+      summary: Place bet for Marble Race game
+      description: |
+        Place a bet on the Marble Race game. User selects one of four colored marbles (RED, BLUE, GREEN, or ORANGE) and bets an amount (1-25).
+        A race is simulated and one marble wins. If the selected marble wins, user receives payout based on multiplier.
+        - Bet amount: Between $1 and $25
+        - Payout: 3.5x multiplier (bet $50, win $175)
+        The game uses a three-tier decision logic to determine win/loss:
+        1. User profit/loss limits (max $25 profit, max $25 loss)
+        2. Platform risk check (ensures platform has sufficient balance)
+        3. Normal gameplay with controlled probability (40% win chance)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - selectedMarble
+                - betAmount
+              properties:
+                selectedMarble:
+                  type: string
+                  enum: [RED, BLUE, GREEN, ORANGE]
+                  example: RED
+                  description: Marble selected by user
+                betAmount:
+                  type: number
+                  minimum: 1
+                  maximum: 25
+                  example: 50
+                  description: Bet amount (must be integer between 1 and 25)
+      responses:
+        '200':
+          description: Bet placed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Congratulations! RED won. You won 175 USDT (3.5x)!'
+                  data:
+                    type: object
+                    properties:
+                      gameId:
+                        type: string
+                        example: GAME20241228143025457
+                        description: Unique game ID
+                      result:
+                        type: string
+                        enum: [WIN, LOSE]
+                        example: WIN
+                        description: Game result
+                      selectedMarble:
+                        type: string
+                        enum: [RED, BLUE, GREEN, ORANGE]
+                        example: RED
+                        description: Marble selected by user
+                      winningMarble:
+                        type: string
+                        enum: [RED, BLUE, GREEN, ORANGE]
+                        example: RED
+                        description: Winning marble
+                      betAmount:
+                        type: number
+                        example: 50
+                        description: Amount bet
+                      winAmount:
+                        type: number
+                        example: 175
+                        description: Amount won (if result is WIN)
+                      lossAmount:
+                        type: number
+                        example: 50
+                        description: Amount lost (if result is LOSE)
+                      userProfitLoss:
+                        type: number
+                        example: 125
+                        description: User's total profit/loss after this game
+                      gamingWalletBalance:
+                        type: number
+                        example: 500
+                        description: Updated gaming wallet balance
+              examples:
+                win:
+                  value:
+                    success: true
+                    message: 'Congratulations! RED won. You won 175 USDT (3.5x)!'
+                    data:
+                      gameId: GAME20241228143025457
+                      result: WIN
+                      selectedMarble: RED
+                      winningMarble: RED
+                      betAmount: 50
+                      winAmount: 175
+                      userProfitLoss: 125
+                      gamingWalletBalance: 675
+                lose:
+                  value:
+                    success: true
+                    message: 'Sorry, BLUE won. You lost 25 USDT. Better luck next time!'
+                    data:
+                      gameId: GAME20241228143025458
+                      result: LOSE
+                      selectedMarble: RED
+                      winningMarble: BLUE
+                      betAmount: 25
+                      lossAmount: 25
+                      userProfitLoss: -5
+                      gamingWalletBalance: 475
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidMarble:
+                  value:
+                    success: false
+                    message: Selected marble must be RED, BLUE, GREEN, or ORANGE
+                    data: null
+                invalidBetAmount:
+                  value:
+                    success: false
+                    message: Bet amount must be a positive integer
+                    data: null
+                betAmountOutOfRange:
+                  value:
+                    success: false
+                    message: Bet amount must be between 1 and 25
+                    data: null
+                insufficientBalance:
+                  value:
+                    success: false
+                    message: Insufficient balance in gaming wallet
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Authentication required
+                data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/games/gameTransactions:
+    get:
+      tags:
+        - Games
+      summary: Get game transactions
+      description: |
+        Retrieve paginated list of game transactions (GAME_WIN and GAME_LOSE) for the authenticated user.
+        Returns all game-related transactions including wins and losses from Color Changer, Dice Roll, Dragon Tiger, Super Over, and Marble Race games.
+        Can be filtered by game name (COLOR_CHANGER, DICE_ROLL, DRAGON_TIGER, SUPER_OVER, or MARBLE_RACE) and game type (ALL, WIN, or LOSS).
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (starts at 1)
+          example: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of transactions per page (max 100)
+          example: 20
+        - in: query
+          name: gameName
+          schema:
+            type: string
+            enum: [COLOR_CHANGER, DICE_ROLL, DRAGON_TIGER, SUPER_OVER, MARBLE_RACE]
+          required: false
+          description: Filter by game name (optional)
+          example: COLOR_CHANGER
+        - in: query
+          name: gameType
+          schema:
+            type: string
+            enum: [ALL, WIN, LOSS]
+            default: ALL
+          required: false
+          description: Filter by game type - ALL (both wins and losses), WIN (only wins), or LOSS (only losses)
+          example: ALL
+      responses:
+        '200':
+          description: Game transactions fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Game transactions fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      transactions:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/Transaction'
+                            - type: object
+                              properties:
+                                gameType:
+                                  type: string
+                                  nullable: true
+                                  enum: [COLOR_CHANGER, DICE_ROLL, DRAGON_TIGER, SUPER_OVER, MARBLE_RACE, null]
+                                  description: Type of game (COLOR_CHANGER, DICE_ROLL, DRAGON_TIGER, SUPER_OVER, or MARBLE_RACE, null if game not found)
+                                  example: COLOR_CHANGER
+                                userColor:
+                                  type: string
+                                  nullable: true
+                                  enum: [RED, GREEN, BLUE, null]
+                                  description: User's selected color in Color Changer game (null for Dice Roll or if game not found)
+                                  example: RED
+                                winningColor:
+                                  type: string
+                                  nullable: true
+                                  enum: [RED, GREEN, BLUE, null]
+                                  description: The actual result color in Color Changer game (null for Dice Roll or if game not found)
+                                  example: GREEN
+                                result:
+                                  type: string
+                                  nullable: true
+                                  enum: [WIN, LOSE, null]
+                                  description: Game result (WIN or LOSE, null if game not found)
+                                  example: WIN
+                                betType:
+                                  type: string
+                                  nullable: true
+                                  enum: [SINGLE_NUMBERS, NUMBER_RANGE, null]
+                                  description: Dice Roll bet type (SINGLE_NUMBERS or NUMBER_RANGE, null for Color Changer or if game not found)
+                                  example: SINGLE_NUMBERS
+                                selectedNumber:
+                                  type: number
+                                  nullable: true
+                                  minimum: 1
+                                  maximum: 6
+                                  description: Selected number for Dice Roll single numbers bet (null for other bet types or if game not found)
+                                  example: 3
+                                selectedRange:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    from:
+                                      type: number
+                                      minimum: 1
+                                      maximum: 6
+                                      example: 2
+                                    to:
+                                      type: number
+                                      minimum: 1
+                                      maximum: 6
+                                      example: 4
+                                  description: Selected range for Dice Roll (1-3 numbers inclusive; null for other bet types or if game not found)
+                                diceResult:
+                                  type: number
+                                  nullable: true
+                                  minimum: 1
+                                  maximum: 6
+                                  description: The actual dice result (1-6) for Dice Roll game (null for other games or if game not found)
+                                  example: 4
+                                dragonCard:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    suit:
+                                      type: string
+                                      example: Hearts
+                                    rank:
+                                      type: string
+                                      example: King
+                                    value:
+                                      type: number
+                                      example: 13
+                                  description: Dragon card for Dragon Tiger game (null for other games or if game not found)
+                                tigerCard:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    suit:
+                                      type: string
+                                      example: Spades
+                                    rank:
+                                      type: string
+                                      example: 7
+                                    value:
+                                      type: number
+                                      example: 7
+                                  description: Tiger card for Dragon Tiger game (null for other games or if game not found)
+                                winningSide:
+                                  type: string
+                                  nullable: true
+                                  enum: [DRAGON, TIGER, TIE, null]
+                                  description: Winning side for Dragon Tiger game (null for other games or if game not found)
+                                  example: DRAGON
+                                runThreshold:
+                                  type: number
+                                  nullable: true
+                                  enum: [6, 8, 10, 12, 14, 16, null]
+                                  description: Run threshold for Super Over game (null for other games or if game not found)
+                                  example: 8
+                                ballScores:
+                                  type: array
+                                  nullable: true
+                                  items:
+                                    type: number
+                                    minimum: 0
+                                    maximum: 6
+                                  description: Ball scores array for Super Over game (null for other games or if game not found)
+                                  example: [4, 0, 2, 6, 0, 0]
+                                totalRunsScored:
+                                  type: number
+                                  nullable: true
+                                  description: Total runs scored for Super Over game (null for other games or if game not found)
+                                  example: 12
+                                selectedMarble:
+                                  type: string
+                                  nullable: true
+                                  enum: [RED, BLUE, GREEN, ORANGE, null]
+                                  description: Selected marble for Marble Race game (null for other games or if game not found)
+                                  example: RED
+                                winningMarble:
+                                  type: string
+                                  nullable: true
+                                  enum: [RED, BLUE, GREEN, ORANGE, null]
+                                  description: Winning marble for Marble Race game (null for other games or if game not found)
+                                  example: RED
+                      totalCount:
+                        type: integer
+                        example: 45
+                        description: Total number of game transactions
+                      currentPage:
+                        type: integer
+                        example: 1
+                        description: Current page number
+                      totalPages:
+                        type: integer
+                        example: 3
+                        description: Total number of pages available
+              examples:
+                withTransactions:
+                  value:
+                    success: true
+                    message: Game transactions fetched successfully
+                    data:
+                      transactions:
+                        - _id: 60d5ec49f8d2e63a4c8e9a1a
+                          transactionId: TXN20241228143025457
+                          userId: 60d5ec49f8d2e63a4c8e9a1b
+                          category: GAME_WIN
+                          status: COMPLETED
+                          amount: 20
+                          currency: USDT
+                          network: INTERNAL
+                          fee: 0
+                          netAmount: 20
+                          blockchainVerified: false
+                          userColor: RED
+                          winningColor: RED
+                          result: WIN
+                          metadata:
+                            gamingWalletAmount: 510
+                            gameId: GAME20241228143025457
+                            notes: Color Changer Game - WIN
+                          createdAt: '2024-12-28T14:30:25.000Z'
+                          updatedAt: '2024-12-28T14:30:25.000Z'
+                        - _id: 60d5ec49f8d2e63a4c8e9a1c
+                          transactionId: TXN20241228143025458
+                          userId: 60d5ec49f8d2e63a4c8e9a1b
+                          category: GAME_LOSE
+                          status: COMPLETED
+                          amount: 10
+                          currency: USDT
+                          network: INTERNAL
+                          fee: 0
+                          netAmount: 10
+                          blockchainVerified: false
+                          gameType: DICE_ROLL
+                          result: LOSE
+                          betType: SINGLE_NUMBERS
+                          selectedNumber: 3
+                          diceResult: 5
+                          metadata:
+                            gamingWalletAmount: 500
+                            gameId: GAME20241228143025458
+                            notes: Dice Roll Game - LOSE
+                          createdAt: '2024-12-28T14:25:15.000Z'
+                          updatedAt: '2024-12-28T14:25:15.000Z'
+                      totalCount: 45
+                      currentPage: 1
+                      totalPages: 3
+                noTransactions:
+                  value:
+                    success: true
+                    message: Game transactions fetched successfully
+                    data:
+                      transactions: []
+                      totalCount: 0
+                      currentPage: 1
+                      totalPages: 0
+        '400':
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidPagination:
+                  value:
+                    success: false
+                    message: Invalid pagination parameters. Page must be >= 1, limit must be between 1 and 100
+                    data: null
+                invalidGameName:
+                  value:
+                    success: false
+                    message: 'Invalid gameName. Allowed values: COLOR_CHANGER, DICE_ROLL, DRAGON_TIGER, SUPER_OVER, MARBLE_RACE'
+                    data: null
+                invalidGameType:
+                  value:
+                    success: false
+                    message: 'Invalid gameType. Allowed values: ALL, WIN, LOSS'
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Authentication required
+                data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

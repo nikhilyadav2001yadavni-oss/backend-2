@@ -1,0 +1,398 @@
+paths:
+  /api/v1/wallet/currency-list:
+    get:
+      tags:
+        - Wallet
+      summary: Get list of supported currencies
+      description: Retrieve all active currencies supported by the platform with their details including fees and minimum amounts
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Currency list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Currency list fetched successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Currency'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/wallet/deposit:
+    post:
+      tags:
+        - Wallet
+      summary: Process a deposit
+      description: 'Submit a deposit transaction for verification. The system verifies the transaction on blockchain and credits 50% to gaming wallet and 50% to ROI wallet after fee deduction. The ROI wallet portion is automatically invested with a 7-day lock-in period. Referral bonuses are also processed (Direct: 3%, Indirect: 1.5%).'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currency
+                - amount
+                - toAddress
+                - fromAddress
+                - transactionHash
+              properties:
+                currency:
+                  type: string
+                  enum: [TRX, BNB, ETH, SOL]
+                  example: TRX
+                  description: Currency symbol
+                amount:
+                  type: number
+                  example: 100
+                  description: Deposit amount
+                toAddress:
+                  type: string
+                  example: TYour-Platform-Wallet-Address
+                  description: Platform wallet address (recipient)
+                fromAddress:
+                  type: string
+                  example: TUser-Wallet-Address
+                  description: User's wallet address (sender)
+                transactionHash:
+                  type: string
+                  example: '0xabc123def456...'
+                  description: Blockchain transaction hash
+      responses:
+        '200':
+          description: Deposit successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Deposit successful! 49 TRX credited to Gaming Wallet and 49 TRX credited to ROI Wallet'
+                  data:
+                    $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Bad request or verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  value:
+                    success: false
+                    message: 'Missing required fields: currency, amount, toAddress, fromAddress, transactionHash'
+                    data: null
+                minimumAmount:
+                  value:
+                    success: false
+                    message: 'Minimum deposit amount for TRX is 10'
+                    data: null
+                transactionNotFound:
+                  value:
+                    success: false
+                    message: 'Transaction not found on blockchain'
+                    data: null
+                alreadyProcessed:
+                  value:
+                    success: false
+                    message: 'Transaction hash already processed'
+                    data: null
+                addressMismatch:
+                  value:
+                    success: false
+                    message: 'Recipient address mismatch'
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/wallet/withdrawal:
+    post:
+      tags:
+        - Wallet
+      summary: Request a withdrawal
+      description: |
+        Submit a withdrawal request from gaming wallet or ROI wallet. Admin will process manually and add transaction hash later.
+        
+        **ROI Wallet Withdrawal:**
+        - Automatically validates lock-in period (7 days)
+        - Only unlocked balance can be withdrawn
+        - Locked balance (from investments still in lock-in period) cannot be withdrawn
+        - ROI earnings (credited daily) are always available for withdrawal
+        
+        **Gaming Wallet Withdrawal:**
+        - No lock-in period restrictions
+        - Full balance available for withdrawal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletType
+                - amount
+                - withdrawalAddress
+                - currency
+                - networkFee
+              properties:
+                walletType:
+                  type: string
+                  enum: [gamingWallet, roiWallet]
+                  example: roiWallet
+                  description: Wallet to withdraw from (only gamingWallet or roiWallet allowed)
+                amount:
+                  type: number
+                  example: 100
+                  description: Amount to withdraw
+                withdrawalAddress:
+                  type: string
+                  example: TYour-Wallet-Address
+                  description: Your wallet address to receive funds
+                currency:
+                  type: string
+                  enum: [TRX, BNB, ETH, SOL]
+                  example: TRX
+                  description: Currency symbol
+                networkFee:
+                  type: number
+                  example: 1
+                  description: Network/gas fee (total deduction = amount + networkFee)
+      responses:
+        '200':
+          description: Withdrawal request submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Withdrawal request submitted successfully. Total deducted: 101 TRX (Amount: 100 + Network Fee: 1). Your withdrawal will be processed by admin.'
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/Transaction'
+                      - type: object
+                        properties:
+                          status:
+                            type: string
+                            example: PENDING
+                          transactionHash:
+                            type: null
+                            example: null
+                            description: Will be filled by admin after processing
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  value:
+                    success: false
+                    message: 'Missing required fields: walletType, amount, withdrawalAddress, currency, networkFee'
+                    data: null
+                invalidWallet:
+                  value:
+                    success: false
+                    message: 'Invalid walletType. Allowed values: gamingWallet, roiWallet'
+                    data: null
+                insufficientBalance:
+                  value:
+                    success: false
+                    message: 'Insufficient balance in roiWallet. Available: 50 TRX, Required: 101 TRX (including network fee: 1)'
+                    data: null
+                roiLockedBalance:
+                  value:
+                    success: false
+                    message: 'Insufficient unlocked balance in ROI wallet. Available: 300 USDT, Required: 500 USDT, Locked: 700 USDT'
+                    data: null
+                minimumAmount:
+                  value:
+                    success: false
+                    message: 'Minimum withdrawal amount for TRX is 20'
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/wallet/transactions:
+    get:
+      tags:
+        - Wallet
+      summary: Get transaction history
+      description: Retrieve user's transaction history with filtering and pagination support
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [ALL, DEPOSIT, WITHDRAWAL, ROI_CREDIT, GAME, REFERRAL_BONUS]
+            default: ALL
+          description: Filter transactions by type
+          example: DEPOSIT
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (starts at 1)
+          example: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of transactions per page (max 100)
+          example: 20
+      responses:
+        '200':
+          description: Transactions fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Transactions fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      transactions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Transaction'
+                      totalCount:
+                        type: integer
+                        example: 45
+                        description: Total number of transactions matching the filter
+                      currentPage:
+                        type: integer
+                        example: 1
+                        description: Current page number
+                      totalPages:
+                        type: integer
+                        example: 3
+                        description: Total number of pages available
+        '400':
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidType:
+                  value:
+                    success: false
+                    message: 'Invalid type. Allowed values: ALL, DEPOSIT, WITHDRAWAL, ROI_CREDIT, GAME, REFERRAL_BONUS'
+                    data: null
+                invalidPagination:
+                  value:
+                    success: false
+                    message: 'Invalid pagination parameters. Page must be >= 1, limit must be between 1 and 100'
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/wallet/transaction/{id}:
+    get:
+      tags:
+        - Wallet
+      summary: Get transaction by ID
+      description: Retrieve a specific transaction by its ID or transactionId. User can only access their own transactions.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Transaction ID (_id or transactionId)
+          example: 60d5ec49f8d2e63a4c8e9a1b
+      responses:
+        '200':
+          description: Transaction fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Transaction fetched successfully
+                  data:
+                    $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Bad request - Transaction ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found or access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Transaction not found or you don't have access to this transaction
+                    data: null
+

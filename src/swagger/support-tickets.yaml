@@ -1,0 +1,461 @@
+paths:
+  /api/v1/support-tickets:
+    get:
+      tags:
+        - Support tickets
+      summary: Support tickets service health
+      description: Returns a simple message that the support tickets route is mounted (no authentication).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Support tickets service connected
+    post:
+      tags:
+        - Support tickets
+      summary: Create a support ticket
+      description: |
+        Creates a ticket and the first user message. Optional image attachments (field name `attachments`, up to 5 files, images only, max 5MB each).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - subject
+                - message
+              properties:
+                subject:
+                  type: string
+                  minLength: 3
+                  maxLength: 200
+                  example: Unable to access my account
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+                  example: I get an error when I try to log in.
+                attachments:
+                  type: array
+                  maxItems: 5
+                  items:
+                    type: string
+                    format: binary
+                  description: Optional image files (field name must be `attachments`)
+      responses:
+        '201':
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Support ticket created
+                  data:
+                    type: object
+                    properties:
+                      ticket:
+                        $ref: '#/components/schemas/SupportTicket'
+                      firstMessage:
+                        $ref: '#/components/schemas/SupportTicketMessage'
+        '400':
+          description: Validation or upload error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/support-tickets/socket.io:
+    get:
+      tags:
+        - Support tickets
+      summary: Socket.IO — connection guide, events, and responses
+      description: |
+        ### What this is
+
+        This is **not** a normal REST GET. Socket.IO serves **Engine.IO** on this **path** (`/api/v1/support-tickets/socket.io`). Use **`socket.io-client`** in apps; **Swagger UI cannot connect** to Socket.IO.
+
+        **Schema references (Components):**  
+        `SupportTicketSocketJoinPayload`, `SupportTicketSocketSendPayload`, `SupportTicketSocketJoinedPayload`, `SupportTicketSocketReceiveMessagePayload`, `SupportTicketSocketTicketErrorPayload`, `SupportTicketSocketAckJoinOk`, `SupportTicketSocketAckJoinErr`, `SupportTicketSocketAckSendOk`, `SupportTicketSocketAckSendErr`, and `SupportTicketMessage` (message body).
+
+        ---
+
+        ### How to connect
+
+        | Setting | Value |
+        |--------|--------|
+        | **URL (origin only)** | `http://localhost:3001` (local) or `http://51.21.160.131:3001` (server) — no `/api/v1` in the host URL |
+        | **Socket.IO path** | `/api/v1/support-tickets/socket.io` |
+        | **Namespace (recommended)** | `/` (default) |
+        | **JWT** | Same token as REST `Authorization: Bearer …` — pass as `auth: { token: "<jwt>" }` or `query: { token: "<jwt>" }` (also accepts `query.auth`) |
+
+        If `NEXT_PUBLIC_API_URL` is `http://51.21.160.131:3001/api/v1`, strip `/api/v1` → use **`http://51.21.160.131:3001`** as the Socket.IO URL, plus the path above.
+
+        **Postman (Socket.IO request):** URL = origin only; **Settings** → path = `/api/v1/support-tickets/socket.io`; **Namespace** = `/`. Do not put the full `/socket.io` URL in the address bar with a bogus `path` query param.
+
+        **Wrong URL pattern:** Using the full URL as the client “server URL” makes some clients use namespace `/api/v1/support-tickets/socket.io`. The server also accepts that namespace so Postman-style URLs still work, but **all participants in one chat should use the same namespace** (prefer **`/`** everywhere).
+
+        ---
+
+        ### Connection result
+
+        | Result | Meaning |
+        |--------|--------|
+        | `connect` | JWT OK; you can emit `join_room` / `join_ticket` |
+        | `connect_error` | Missing/invalid JWT (`token required`, `invalid token`), wrong path, or server down |
+
+        ---
+
+        ### Client → server (emit)
+
+        | Order | Event name | Payload (JSON) | When |
+        |------|------------|----------------|------|
+        | 1 | `join_room` **or** `join_ticket` | `{ "ticketId": "<mongoId>" }` — or `ticket_id` instead of `ticketId` | Before sending chat messages; user must own ticket or be admin/superadmin |
+        | 2 | `send_message` | `{ "text": "…", "attachmentUrls": [] }` — `attachmentUrls` optional | After join succeeded |
+
+        **Optional acknowledgement (3rd argument to `emit`, socket.io-client):**
+
+        - After `join_room` / `join_ticket`: success → `SupportTicketSocketAckJoinOk`; failure → `SupportTicketSocketAckJoinErr`.
+        - After `send_message`: success → `SupportTicketSocketAckSendOk` (includes saved `message`); failure → `SupportTicketSocketAckSendErr`.
+
+        ---
+
+        ### Server → client (listen)
+
+        | Event | Payload | When |
+        |-------|---------|------|
+        | `joined` | `SupportTicketSocketJoinedPayload` (`{ ticketId }`) | After join allowed |
+        | `receive_message` | `SupportTicketSocketReceiveMessagePayload` (`{ message }` — see `SupportTicketMessage`) | Broadcast to **every socket in that ticket room** (including sender) |
+        | `ticket_error` | `SupportTicketSocketTicketErrorPayload` (`{ message }`) | Bad payload, not joined, closed ticket, permission, etc. |
+
+        ---
+
+        ### Typical flow
+
+        1. `io(origin, { path: '/api/v1/support-tickets/socket.io', auth: { token } })` → wait for `connect`.
+        2. `socket.emit('join_room', { ticketId: '...' })` → listen for `joined` or `ticket_error`.
+        3. `socket.emit('send_message', { text: 'Hello', attachmentUrls: [] })` → listen for `receive_message` (and optional ack).
+        4. `socket.on('receive_message', ({ message }) => { ... })` for all participants in that ticket.
+
+        ---
+
+        ### Behaviour notes
+
+        - **Roles:** Ticket owner or **admin** / **superadmin**. Admin messages use sender type `SUPPORT`.
+        - **Status:** First **SUPPORT** message on an `OPEN` ticket sets status to **`IN_PROGRESS`**.
+        - **Closed tickets:** `send_message` is rejected (`ticket_error` / ack error).
+
+        ---
+
+        ### Code example (socket.io-client v4)
+
+        ```javascript
+        import { io } from 'socket.io-client'
+
+        const apiBase = process.env.NEXT_PUBLIC_API_URL // e.g. http://51.21.160.131:3001/api/v1
+        const origin = apiBase.replace(/\/api\/v1\/?$/, '')
+        const socket = io(origin, {
+          path: '/api/v1/support-tickets/socket.io',
+          auth: { token: YOUR_JWT_STRING },
+        })
+
+        socket.on('connect', () => console.log('connected'))
+        socket.on('connect_error', (err) => console.error(err.message))
+
+        socket.on('joined', (data) => console.log('joined', data.ticketId))
+        socket.on('receive_message', ({ message }) => console.log('message', message))
+        socket.on('ticket_error', ({ message }) => console.error(message))
+
+        socket.emit('join_room', { ticketId: 'YOUR_TICKET_ID' })
+        socket.emit('send_message', { text: 'Hi', attachmentUrls: [] })
+        ```
+      responses:
+        '200':
+          description: |
+            Engine.IO may return HTTP 200 for polling; use a Socket.IO client with the configured `path` and JWT (see description).
+        '101':
+          description: WebSocket upgrade after Engine.IO handshake (transport=websocket).
+
+  /api/v1/support-tickets/my:
+    get:
+      tags:
+        - Support tickets
+      summary: List my support tickets
+      description: Paginated list of tickets for the authenticated user.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Tickets fetched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Tickets fetched
+                  data:
+                    type: object
+                    properties:
+                      tickets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SupportTicket'
+                      totalCount:
+                        type: integer
+                        example: 10
+                      currentPage:
+                        type: integer
+                        example: 1
+                      totalPages:
+                        type: integer
+                        example: 1
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/support-tickets/{ticketId}:
+    get:
+      tags:
+        - Support tickets
+      summary: Get ticket and messages
+      description: |
+        Returns the ticket and paginated messages. Caller must be the ticket owner or an admin/superadmin.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+          description: Support ticket ID
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Messages page
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Messages per page
+      responses:
+        '200':
+          description: Ticket detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Ticket detail
+                  data:
+                    type: object
+                    properties:
+                      ticket:
+                        $ref: '#/components/schemas/SupportTicket'
+                      messages:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SupportTicketMessage'
+                      totalMessages:
+                        type: integer
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden — not owner or admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/support-tickets/{ticketId}/messages:
+    post:
+      tags:
+        - Support tickets
+      summary: Send a message (REST)
+      description: |
+        Adds a message to the ticket. Regular users send as `USER`; admins/superadmins send as `SUPPORT`. Cannot send on a closed ticket.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 10000
+                  example: Thanks, that worked.
+                attachmentUrls:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: string
+                    format: uri
+                  default: []
+      responses:
+        '201':
+          description: Message stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Message sent
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        $ref: '#/components/schemas/SupportTicketMessage'
+        '400':
+          description: Closed ticket or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/support-tickets/{ticketId}/close:
+    patch:
+      tags:
+        - Support tickets
+      summary: Close ticket (owner only)
+      description: Marks the ticket as `CLOSED`. Only the ticket owner may close (not admin-only shortcut in this endpoint).
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket closed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Ticket closed
+                  data:
+                    type: object
+                    properties:
+                      ticket:
+                        $ref: '#/components/schemas/SupportTicket'
+        '400':
+          description: Already closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

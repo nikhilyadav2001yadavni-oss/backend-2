@@ -1,0 +1,1452 @@
+paths:
+  /api/v1/user/activity-marquee:
+    get:
+      tags:
+        - User
+      summary: Get activity marquee data
+      description: |
+        Returns random fake activity data for display in app marquee (users, join, deposit, earning).
+        Data changes on every request. No authentication required.
+      responses:
+        '200':
+          description: Activity marquee data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Activity marquee data
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum: [join, deposit, earning]
+                              description: Type of activity
+                            user:
+                              type: string
+                              example: Raj K.
+                              description: Fake user name
+                            value:
+                              type: string
+                              example: ₹15,000
+                              description: Amount (for deposit/earning only)
+                            text:
+                              type: string
+                              example: deposited 1.25 ETH
+                              description: Human-readable activity text
+              example:
+                success: true
+                message: Activity marquee data
+                data:
+                  items:
+                    - type: join
+                      user: Raj K.
+                      text: joined from Mumbai
+                    - type: deposit
+                      user: Priya M.
+                      value: 1.25 ETH
+                      text: deposited 1.25 ETH
+                    - type: earning
+                      user: Amit S.
+                      value: 250 TRX
+                      text: earned 250 TRX
+
+  /api/v1/user/signup:
+    post:
+      tags:
+        - User
+      summary: Register a new user
+      description: Create a new user account with email, phone, password, and optional referral code. On success, a 6-digit OTP is sent to both the user's email and phone number.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - password
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                phone:
+                  type: string
+                  example: '+1234567890'
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+                referralCode:
+                  type: string
+                  example: ABC1234567
+                  description: Optional referral code from existing user
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User registered successfully
+                  data:
+                    type: object
+                    properties:
+                      eotp:
+                        type: string
+                        example: '849261'
+                        description: Random 6-digit OTP sent to email
+                      motp:
+                        type: string
+                        example: '123456'
+                        description: Default 6-digit OTP sent to phone (123456 until SMS provider is live)
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                emailExists:
+                  value:
+                    success: false
+                    message: User already registered with this email
+                    data: null
+                phoneExists:
+                  value:
+                    success: false
+                    message: User already registered with this phone number
+                    data: null
+                invalidReferral:
+                  value:
+                    success: false
+                    message: Invalid referral code
+                    data: null
+
+  /api/v1/user/login:
+    post:
+      tags:
+        - User
+      summary: User login
+      description: Authenticate user with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+      responses:
+        '200':
+          description: Login successful. Returns tokens for verified users, or OTP for unverified users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User logged in successfully
+                  data:
+                    oneOf:
+                      - type: object
+                        description: Response for verified users
+                        properties:
+                          _id:
+                            type: string
+                            example: 60d5ec49f8d2e63a4c8e9a1a
+                          name:
+                            type: string
+                            example: John Doe
+                          email:
+                            type: string
+                            example: john@example.com
+                          phone:
+                            type: string
+                            example: '+1234567890'
+                          referralCode:
+                            type: string
+                            example: ABC1234567
+                          isVerified:
+                            type: boolean
+                            example: true
+                          token:
+                            type: object
+                            properties:
+                              accessToken:
+                                type: string
+                                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                              refreshToken:
+                                type: string
+                                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                              accessTokenExpiry:
+                                type: string
+                                format: date-time
+                              refreshTokenExpiry:
+                                type: string
+                                format: date-time
+                          fcmToken:
+                            type: string
+                            nullable: true
+                            example: dKx8Yz9vWqR:APA91bH...your-fcm-token-here
+                            description: Firebase Cloud Messaging token (null if not registered)
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                      - type: object
+                        description: Response for unverified users
+                        properties:
+                          _id:
+                            type: string
+                            example: 60d5ec49f8d2e63a4c8e9a1a
+                          name:
+                            type: string
+                            example: John Doe
+                          email:
+                            type: string
+                            example: john@example.com
+                          phone:
+                            type: string
+                            example: '+1234567890'
+                          referralCode:
+                            type: string
+                            example: ABC1234567
+                          isVerified:
+                            type: boolean
+                            example: false
+                          eotp:
+                            type: string
+                            example: '849261'
+                            description: Random 6-digit OTP sent to email
+                          motp:
+                            type: string
+                            example: '123456'
+                            description: Default 6-digit OTP sent to phone (123456 until SMS provider is live)
+                          expiresAt:
+                            type: string
+                            format: date-time
+                            example: '2025-12-28T14:35:00.000Z'
+                          expiresIn:
+                            type: string
+                            example: '5 minutes'
+                          fcmToken:
+                            type: string
+                            nullable: true
+                            example: dKx8Yz9vWqR:APA91bH...your-fcm-token-here
+                            description: Firebase Cloud Messaging token (null if not registered)
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+              examples:
+                verifiedUser:
+                  value:
+                    success: true
+                    message: User logged in successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      name: John Doe
+                      email: john@example.com
+                      phone: '+1234567890'
+                      referralCode: ABC1234567
+                      isVerified: true
+                      token:
+                        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                        accessTokenExpiry: '2025-12-28T15:00:00.000Z'
+                        refreshTokenExpiry: '2025-12-29T15:00:00.000Z'
+                      fcmToken: dKx8Yz9vWqR:APA91bH...your-fcm-token-here
+                      createdAt: '2025-01-01T00:00:00.000Z'
+                      updatedAt: '2025-01-01T00:00:00.000Z'
+                unverifiedUser:
+                  value:
+                    success: true
+                    message: Please verify your account to complete login. OTP has been sent to your email and phone.
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      name: John Doe
+                      email: john@example.com
+                      phone: '+1234567890'
+                      referralCode: ABC1234567
+                      isVerified: false
+                      eotp: '849261'
+                      motp: '123456'
+                      expiresAt: '2025-12-28T14:35:00.000Z'
+                      expiresIn: '5 minutes'
+                      fcmToken: null
+                      createdAt: '2025-01-01T00:00:00.000Z'
+                      updatedAt: '2025-01-01T00:00:00.000Z'
+        '401':
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Invalid email or password
+                  data:
+                    type: null
+                    example: null
+
+  /api/v1/user/send-otp:
+    post:
+      tags:
+        - User
+      summary: Send OTP
+      description: |
+        Send a fresh OTP to the user's email and/or phone.
+        The `target` field controls which channel is used (defaults to `all`).
+        - `email` → sends `eotp` (random) via SendGrid only
+        - `phone` → sends `motp` (123456 stub) via SMS only
+        - `all`   → sends both (default behaviour)
+
+        The server looks up the registered phone from the email provided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: Registered email address of the user
+                target:
+                  type: string
+                  enum: [email, phone, all]
+                  default: all
+                  example: all
+                  description: Channel to send OTP to. Defaults to "all" if omitted.
+            examples:
+              sendAll:
+                summary: Send to both email and phone (default)
+                value:
+                  email: john@example.com
+                  target: all
+              sendEmailOnly:
+                summary: Send to email only
+                value:
+                  email: john@example.com
+                  target: email
+              sendPhoneOnly:
+                summary: Send to phone only
+                value:
+                  email: john@example.com
+                  target: phone
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: OTP sent successfully to email and phone
+                  data:
+                    type: object
+                    properties:
+                      target:
+                        type: string
+                        enum: [email, phone, all]
+                        example: all
+                        description: Channel(s) the OTP was dispatched to
+                      expiresAt:
+                        type: string
+                        format: date-time
+                        example: '2025-12-28T14:35:00.000Z'
+                        description: Exact expiration timestamp
+                      expiresIn:
+                        type: string
+                        example: '5 minutes'
+                        description: Human-readable expiration time
+              examples:
+                sendAll:
+                  value:
+                    success: true
+                    message: OTP sent successfully to email and phone
+                    data:
+                      target: all
+                      expiresAt: '2025-12-28T14:35:00.000Z'
+                      expiresIn: '5 minutes'
+                sendEmail:
+                  value:
+                    success: true
+                    message: OTP sent successfully to email
+                    data:
+                      target: email
+                      expiresAt: '2025-12-28T14:35:00.000Z'
+                      expiresIn: '5 minutes'
+                sendPhone:
+                  value:
+                    success: true
+                    message: OTP sent successfully to phone
+                    data:
+                      target: phone
+                      expiresAt: '2025-12-28T14:35:00.000Z'
+                      expiresIn: '5 minutes'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/verify-otp:
+    post:
+      tags:
+        - User
+      summary: Verify OTP
+      description: |
+        Verify OTP sent to the user's email and/or phone.
+
+        **`target` field** controls which channel's OTP is matched:
+        | target | Lookup query | Required fields |
+        |--------|-------------|-----------------|
+        | `email` (default) | OTP record matched by email | `email`, `otp` |
+        | `phone` | OTP record matched by phone number | `phone`, `otp` |
+        | `all` | OTP record matched by email **or** phone | `email`, `phone`, `otp` |
+
+        For `type: registration` the response includes full user details and auth tokens.
+        For `type: verification` (login unverified flow) only a boolean result is returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - otp
+                - type
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: Required when target is "email" (default) or "all"
+                eotp:
+                  type: string
+                  example: '849261'
+                  description: Email OTP received on the registered email address. Required when target is "email" or "all".
+                motp:
+                  type: string
+                  example: '123456'
+                  description: Mobile OTP received on the registered phone number. Required when target is "phone" or "all".
+                type:
+                  type: string
+                  enum: [registration, verification]
+                  example: registration
+                  description: "'registration' for signup flow, 'verification' for login unverified flow"
+                phone:
+                  type: number
+                  example: 9829251975
+                  description: Required when target is "phone" or "all"
+                target:
+                  type: string
+                  enum: [email, phone, all]
+                  default: email
+                  example: email
+                  description: |
+                    Channel to verify against. Defaults to "email" if omitted.
+                    - `email` → verifies eotp against email OTP record
+                    - `phone` → verifies motp against phone OTP record
+                    - `all`   → verifies both eotp AND motp must match the same record
+            examples:
+              byEmail:
+                summary: Verify via email OTP only
+                value:
+                  email: john@example.com
+                  eotp: '849261'
+                  type: registration
+                  target: email
+              byPhone:
+                summary: Verify via phone OTP only
+                value:
+                  phone: 9829251975
+                  motp: '123456'
+                  type: registration
+                  target: phone
+              byAll:
+                summary: Verify both email and phone OTPs
+                value:
+                  email: john@example.com
+                  phone: 9829251975
+                  eotp: '849261'
+                  motp: '123456'
+                  type: registration
+                  target: all
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: OTP verified successfully
+                  data:
+                    oneOf:
+                      - type: object
+                        description: Response for type=registration (includes user details + tokens)
+                        properties:
+                          _id:
+                            type: string
+                            example: 60d5ec49f8d2e63a4c8e9a1a
+                          name:
+                            type: string
+                            example: John Doe
+                          email:
+                            type: string
+                            example: john@example.com
+                          phone:
+                            type: string
+                            example: '9829251975'
+                          referralCode:
+                            type: string
+                            example: ABC1234567
+                          isVerified:
+                            type: boolean
+                            example: true
+                          fcmToken:
+                            type: string
+                            nullable: true
+                            example: null
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          token:
+                            type: object
+                            properties:
+                              accessToken:
+                                type: string
+                                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                              refreshToken:
+                                type: string
+                                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                              accessTokenExpiry:
+                                type: string
+                                format: date-time
+                              refreshTokenExpiry:
+                                type: string
+                                format: date-time
+                      - type: boolean
+                        description: Response for type=verification (boolean true)
+                        example: true
+              examples:
+                registrationSuccess:
+                  summary: Registration OTP verified
+                  value:
+                    success: true
+                    message: OTP verified successfully
+                    data:
+                      _id: 60d5ec49f8d2e63a4c8e9a1a
+                      name: John Doe
+                      email: john@example.com
+                      phone: '9829251975'
+                      referralCode: ABC1234567
+                      isVerified: true
+                      fcmToken: null
+                      createdAt: '2025-01-01T00:00:00.000Z'
+                      updatedAt: '2025-01-01T00:00:00.000Z'
+                      token:
+                        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                        accessTokenExpiry: '2025-12-28T15:00:00.000Z'
+                        refreshTokenExpiry: '2025-12-29T15:00:00.000Z'
+                verificationSuccess:
+                  summary: Verification OTP verified (login flow)
+                  value:
+                    success: true
+                    message: OTP verified successfully
+                    data: true
+        '400':
+          description: Bad request - Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidOtp:
+                  value:
+                    success: false
+                    message: Invalid OTP
+                    data: null
+                expiredOtp:
+                  value:
+                    success: false
+                    message: OTP has expired
+                    data: null
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/v1/user/reset-password:
+    post:
+      tags:
+        - User
+      summary: Reset Password
+      description: |
+        Reset user password by sending a temporary password via email. 
+        The temporary password is 8 characters long and contains:
+        - At least 1 uppercase letter (A-Z)
+        - At least 1 lowercase letter (a-z)
+        - At least 1 number (0-9)
+        - At least 1 special character (!@#$%^&*)
+        
+        The temporary password will be sent to the user's registered email address.
+        User must change this temporary password after logging in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: Registered email address
+      responses:
+        '200':
+          description: Temporary password sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Temporary password has been sent to your email. Please check your inbox and change your password after logging in.'
+                  data:
+                    type: object
+                    nullable: true
+                    example: null
+        '400':
+          description: Bad request - Email is required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Email is required'
+                  data:
+                    type: object
+                    nullable: true
+                    example: null
+        '401':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'User not found with this email address'
+                  data:
+                    type: object
+                    nullable: true
+                    example: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Failed to reset password'
+                  data:
+                    type: object
+                    nullable: true
+                    example: null
+
+  /api/v1/user/user-details:
+    get:
+      tags:
+        - User
+      summary: Get user details
+      description: Get authenticated user's complete details including profile information, wallet balance, and referral info. Password and OTP are excluded from the response.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User details fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: 60d5ec49f8d2e63a4c8e9a1a
+                      name:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john@example.com
+                      phone:
+                        type: string
+                        example: '+1234567890'
+                      referralCode:
+                        type: string
+                        example: ABC1234567
+                      isVerified:
+                        type: boolean
+                        example: true
+                      dob:
+                        type: string
+                        format: date
+                        example: '1990-01-15'
+                      country:
+                        type: string
+                        example: United States
+                      city:
+                        type: string
+                        example: New York
+                      address:
+                        type: string
+                        example: 123 Main St, Apt 4B
+                      profilepicture:
+                        type: string
+                        example: '/uploads/profile/user123.jpg'
+                      is2fa:
+                        type: boolean
+                        example: false
+                      isBiometric:
+                        type: boolean
+                        example: true
+                      totalReferrals:
+                        type: number
+                        example: 5
+                        description: Total direct referrals count
+                      totalTeams:
+                        type: number
+                        example: 15
+                        description: Total teams (direct + indirect referrals)
+                      totalEarning:
+                        type: number
+                        example: 498.8
+                        description: Total earnings from ROI wallet
+                      totalGames:
+                        type: number
+                        example: 10
+                        description: Total number of games played
+                      gameWinningEarning:
+                        type: number
+                        example: 0
+                        description: Total earnings from game wins
+                      themeMode:
+                        type: string
+                        enum: [light, dark]
+                        example: light
+                        description: User's preferred theme mode (light or dark)
+                      fcmToken:
+                        type: string
+                        nullable: true
+                        example: dKx8Yz9vWqR:APA91bH...your-fcm-token-here
+                        description: Firebase Cloud Messaging token for push notifications (null if not registered)
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                      wallet:
+                        type: object
+                        properties:
+                          mainWallet:
+                            type: number
+                            example: 1000
+                          gamingWallet:
+                            type: number
+                            example: 500
+                          roiWallet:
+                            type: number
+                            example: 200
+                          totalBalance:
+                            type: number
+                            example: 1700
+                            description: Total balance across all wallets (mainWallet + gamingWallet + roiWallet)
+                          monthlyChange:
+                            type: object
+                            properties:
+                              percentage:
+                                type: number
+                                example: 12.5
+                                description: Percentage change in total balance this month
+                              period:
+                                type: string
+                                example: 'this month'
+                                description: Period for the change calculation
+                              balanceAtStart:
+                                type: number
+                                example: 1500
+                                description: Total balance at the start of the current month
+                              currentBalance:
+                                type: number
+                                example: 1700
+                                description: Current total balance
+                            description: Monthly change metrics showing percentage change this month
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/direct-referrals:
+    get:
+      tags:
+        - User
+      summary: Get direct referrals
+      description: Get list of direct referrals for a specific user with their team size and earnings
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID to fetch referrals for
+          example: 60d5ec49f8d2e63a4c8e9a1a
+      responses:
+        '200':
+          description: Direct referrals fetched successfully or no referrals found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Direct referrals fetched successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DirectReferral'
+              examples:
+                withReferrals:
+                  value:
+                    success: true
+                    message: Direct referrals fetched successfully
+                    data:
+                      - _id: '60d5ec49f8d2e63a4c8e9a1b'
+                        name: Jane Doe
+                        totalTeam: 3
+                        totalEarnings: 150
+                        allLevelsCommissionRate: 1.5
+                        directCommissionRate: 3
+                      - _id: '60d5ec49f8d2e63a4c8e9a1c'
+                        name: Bob Smith
+                        totalTeam: 5
+                        totalEarnings: 250
+                        allLevelsCommissionRate: 1.5
+                        directCommissionRate: 3
+                noReferrals:
+                  value:
+                    success: false
+                    message: No direct referrals found
+                    data: []
+        '400':
+          description: Bad request - userId required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/edit-profile:
+    post:
+      tags:
+        - User
+      summary: Edit user profile
+      description: Update user profile information (name, phone, dob, country, city, address, profilepicture). Email cannot be changed.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  example: John Doe
+                  description: User's full name
+                phone:
+                  type: string
+                  example: '+1234567890'
+                  description: User's phone number
+                dob:
+                  type: string
+                  format: date
+                  example: '1990-01-15'
+                  description: Date of birth
+                country:
+                  type: string
+                  example: United States
+                  description: User's country
+                city:
+                  type: string
+                  example: New York
+                  description: User's city
+                address:
+                  type: string
+                  example: 123 Main St, Apt 4B
+                  description: User's address
+                profilepicture:
+                  type: string
+                  example: '/uploads/profile/user123.jpg'
+                  description: Path to profile picture
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Profile updated successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: 60d5ec49f8d2e63a4c8e9a1a
+                      name:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john@example.com
+                      phone:
+                        type: string
+                        example: '+1234567890'
+                      dob:
+                        type: string
+                        format: date-time
+                        example: '1990-01-15T00:00:00.000Z'
+                      country:
+                        type: string
+                        example: United States
+                      city:
+                        type: string
+                        example: New York
+                      address:
+                        type: string
+                        example: 123 Main St, Apt 4B
+                      profilepicture:
+                        type: string
+                        example: '/uploads/profile/user123.jpg'
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                emailChangeAttempt:
+                  value:
+                    success: false
+                    message: Email cannot be changed. Please contact support if you need to update your email.
+                    data: null
+                noFields:
+                  value:
+                    success: false
+                    message: At least one field is required to update
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/change-password:
+    post:
+      tags:
+        - User
+      summary: Change user password
+      description: Change user password with strong password validation (8+ characters, one uppercase, one number, one special character)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+                - confirmPassword
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                  example: OldPass123!
+                  description: Current password
+                newPassword:
+                  type: string
+                  format: password
+                  example: NewSecurePass123!
+                  description: New password (must be 8+ characters, one uppercase, one number, one special character)
+                confirmPassword:
+                  type: string
+                  format: password
+                  example: NewSecurePass123!
+                  description: Confirm new password (must match newPassword)
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Password changed successfully
+                  data:
+                    type: null
+                    example: null
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  value:
+                    success: false
+                    message: Current password, new password, and confirm password are required
+                    data: null
+                passwordMismatch:
+                  value:
+                    success: false
+                    message: New password and confirm password do not match
+                    data: null
+                weakPassword:
+                  value:
+                    success: false
+                    message: Password must be at least 8 characters long, contain one uppercase letter, one number, and one special character
+                    data: null
+                samePassword:
+                  value:
+                    success: false
+                    message: New password must be different from current password
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidPassword:
+                  value:
+                    success: false
+                    message: Current password is incorrect
+                    data: null
+
+  /api/v1/user/update-2fa:
+    post:
+      tags:
+        - User
+      summary: Update 2FA setting
+      description: Enable or disable two-factor authentication for the user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is2fa
+              properties:
+                is2fa:
+                  type: boolean
+                  example: true
+                  description: Enable (true) or disable (false) 2FA
+      responses:
+        '200':
+          description: 2FA setting updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 2FA enabled successfully
+                  data:
+                    type: object
+                    properties:
+                      is2fa:
+                        type: boolean
+                        example: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidType:
+                  value:
+                    success: false
+                    message: is2fa is required and must be a boolean value
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/update-biometric:
+    post:
+      tags:
+        - User
+      summary: Update biometric setting
+      description: Enable or disable biometric authentication for the user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - isBiometric
+              properties:
+                isBiometric:
+                  type: boolean
+                  example: true
+                  description: Enable (true) or disable (false) biometric authentication
+      responses:
+        '200':
+          description: Biometric setting updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Biometric authentication enabled successfully
+                  data:
+                    type: object
+                    properties:
+                      isBiometric:
+                        type: boolean
+                        example: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidType:
+                  value:
+                    success: false
+                    message: isBiometric is required and must be a boolean value
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/update-fcm-token:
+    post:
+      tags:
+        - User
+        - Firebase
+      summary: Update FCM token for push notifications
+      description: |
+        Register or update Firebase Cloud Messaging (FCM) token for receiving push notifications.
+        
+        **When to call this API:**
+        - After user login
+        - When FCM token is refreshed (Firebase SDK handles this automatically)
+        - When app starts and user is already logged in
+        - After app reinstall
+        
+        **How it works:**
+        1. Frontend obtains FCM token from Firebase SDK
+        2. Frontend sends token to this endpoint
+        3. Backend stores token in user's profile
+        4. Backend uses stored token to send push notifications
+        
+        **Firebase Integration:**
+        - Backend uses Firebase Admin SDK
+        - Service account: `winvest-edf4a-firebase-adminsdk-fbsvc-b921e07078.json`
+        - Project ID: `winvest-edf4a`
+        - Supports both Android and iOS push notifications
+        
+        **Token Management:**
+        - Invalid tokens are automatically removed from database
+        - Token refresh is handled automatically by Firebase SDK
+        - Each user can have one active FCM token
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FCMToken'
+            examples:
+              validToken:
+                value:
+                  fcmToken: dKx8Yz9vWqR:APA91bH...your-fcm-token-here
+                description: Valid FCM token from Firebase SDK
+      responses:
+        '200':
+          description: FCM token updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: FCM token updated successfully
+                  data:
+                    type: null
+                    example: null
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: FCM token updated successfully
+                    data: null
+        '400':
+          description: Bad request - Invalid or missing FCM token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingToken:
+                  value:
+                    success: false
+                    message: FCM token is required and must be a string
+                    data: null
+                invalidToken:
+                  value:
+                    success: false
+                    message: FCM token is required and must be a string
+                    data: null
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    message: Authentication required
+                    data: null
+
+  /api/v1/user/logout:
+    post:
+      tags:
+        - User
+        - Firebase
+      summary: User logout
+      description: |
+        Logout the authenticated user and clear their FCM token. This ensures that push notifications are not sent to the user's device after logout.
+        
+        **What happens:**
+        - User's FCM token is removed from the database
+        - User will no longer receive push notifications
+        - User must re-register FCM token after next login to receive notifications again
+        
+        **Security:**
+        - Requires valid authentication token
+        - Only the authenticated user can logout themselves
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful - FCM token cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Logged out successfully. FCM token cleared.
+                  data:
+                    type: null
+                    example: null
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Logged out successfully. FCM token cleared.
+                    data: null
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    message: Authentication required
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                serverError:
+                  value:
+                    success: false
+                    message: Failed to logout
+                    data: null
+

@@ -1,0 +1,130 @@
+paths:
+  /api/v1/team/direct-referrals/{userId}:
+    get:
+      tags:
+        - Team
+      summary: Get team details and direct referrals
+      description: Get team statistics for authenticated user and direct referred team details for the specified user ID. Returns total direct referrals, total teams (direct + indirect), total earnings, commission rates, and list of direct referred users with their details.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID to fetch direct referrals for
+          example: 60d5ec49f8d2e63a4c8e9a1a
+      responses:
+        '200':
+          description: Team details fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Team details fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      totalDirectReferrals:
+                        type: number
+                        example: 5
+                        description: Total direct referrals of authenticated user
+                      totalTeams:
+                        type: number
+                        example: 15
+                        description: Total teams (direct + indirect) of authenticated user
+                      totalEarning:
+                        type: number
+                        example: 498.8
+                        description: Total earnings (ROI wallet balance) of authenticated user
+                      commissionRates:
+                        type: object
+                        properties:
+                          direct:
+                            type: number
+                            example: 3
+                            description: Direct referral commission rate (%)
+                          allLevels:
+                            type: number
+                            example: 1.5
+                            description: All levels commission rate (%)
+                      directReferredTeam:
+                        type: array
+                        description: Direct referred users for the specified userId
+                        items:
+                          type: object
+                          properties:
+                            userId:
+                              type: string
+                              example: 60d5ec49f8d2e63a4c8e9a1b
+                              description: User ID
+                            name:
+                              type: string
+                              example: Jane Doe
+                            directReferrals:
+                              type: number
+                              example: 2
+                              description: Number of direct referrals this user has
+                            earnings:
+                              type: number
+                              example: 150.5
+                              description: Total earnings (ROI wallet balance) of this user
+              examples:
+                withTeam:
+                  value:
+                    success: true
+                    message: Team details fetched successfully
+                    data:
+                      totalDirectReferrals: 5
+                      totalTeams: 15
+                      totalEarning: 498.8
+                      commissionRates:
+                        direct: 3
+                        allLevels: 1.5
+                      directReferredTeam:
+                        - userId: 60d5ec49f8d2e63a4c8e9a1b
+                          name: Jane Doe
+                          directReferrals: 2
+                          earnings: 150.5
+                        - userId: 60d5ec49f8d2e63a4c8e9a1c
+                          name: Bob Smith
+                          directReferrals: 3
+                          earnings: 200.0
+                noTeam:
+                  value:
+                    success: true
+                    message: Team details fetched successfully
+                    data:
+                      totalDirectReferrals: 0
+                      totalTeams: 0
+                      totalEarning: 0
+                      commissionRates:
+                        direct: 3
+                        allLevels: 1.5
+                      directReferredTeam: []
+        '400':
+          description: Bad request - User ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingUserId:
+                  value:
+                    success: false
+                    message: User ID is required in params
+                    data: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+

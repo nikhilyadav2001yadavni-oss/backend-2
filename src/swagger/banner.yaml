@@ -1,0 +1,374 @@
+paths:
+  /api/v1/banner:
+    post:
+      tags:
+        - Banner
+      summary: Create a new banner
+      description: |
+        Create a new banner with title, description, optional image URL, and optional external link.
+        Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+              properties:
+                title:
+                  type: string
+                  example: MLM Commissions
+                  description: Banner title
+                description:
+                  type: string
+                  example: Earn from referrals across unlimited levels
+                  description: Banner description
+                imageUrl:
+                  type: string
+                  format: uri
+                  example: https://res.cloudinary.com/example/image/upload/v1234567890/banners/mlm-commissions.png
+                  description: Optional image URL for the banner
+                link:
+                  type: string
+                  format: uri
+                  example: https://example.com/mlm-commissions
+                  description: Optional external link URL
+                isActive:
+                  type: boolean
+                  default: true
+                  example: true
+                  description: Whether the banner is active
+                order:
+                  type: integer
+                  default: 0
+                  example: 1
+                  description: Display order (lower number = higher priority)
+      responses:
+        '200':
+          description: Banner created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Banner created successfully
+                  data:
+                    $ref: '#/components/schemas/Banner'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  value:
+                    success: false
+                    message: Title and description are required
+                    data: null
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/banner/all:
+    get:
+      tags:
+        - Banner
+      summary: Get all banners
+      description: |
+        Retrieve all banners. Can filter to show only active banners.
+        Public endpoint (no authentication required).
+      parameters:
+        - in: query
+          name: activeOnly
+          schema:
+            type: boolean
+            default: false
+          description: If true, returns only active banners
+          example: true
+      responses:
+        '200':
+          description: Banners fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Banners fetched successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Banner'
+              examples:
+                withBanners:
+                  value:
+                    success: true
+                    message: Banners fetched successfully
+                    data:
+                      - _id: 60d5ec49f8d2e63a4c8e9a1a
+                        title: MLM Commissions
+                        description: Earn from referrals across unlimited levels
+                        imageUrl: https://res.cloudinary.com/example/image/upload/v1234567890/banners/mlm-commissions.png
+                        link: https://example.com/mlm-commissions
+                        isActive: true
+                        order: 1
+                        createdAt: '2024-12-28T14:30:25.000Z'
+                        updatedAt: '2024-12-28T14:30:25.000Z'
+                      - _id: 60d5ec49f8d2e63a4c8e9a1b
+                        title: Welcome Bonus
+                        description: Get started with a welcome bonus
+                        imageUrl: null
+                        link: https://example.com/welcome-bonus
+                        isActive: true
+                        order: 2
+                        createdAt: '2024-12-28T14:25:15.000Z'
+                        updatedAt: '2024-12-28T14:25:15.000Z'
+                noBanners:
+                  value:
+                    success: true
+                    message: Banners fetched successfully
+                    data: []
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/banner/{id}:
+    get:
+      tags:
+        - Banner
+      summary: Get banner by ID
+      description: Retrieve a specific banner by its ID. Public endpoint (no authentication required).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Banner ID
+          example: 60d5ec49f8d2e63a4c8e9a1a
+      responses:
+        '200':
+          description: Banner fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Banner fetched successfully
+                  data:
+                    $ref: '#/components/schemas/Banner'
+        '400':
+          description: Bad request - Banner ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Banner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Banner not found
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Banner
+      summary: Update banner
+      description: |
+        Update an existing banner. All fields are optional - only provided fields will be updated.
+        Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Banner ID
+          example: 60d5ec49f8d2e63a4c8e9a1a
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: MLM Commissions Updated
+                  description: Banner title
+                description:
+                  type: string
+                  example: Earn from referrals across unlimited levels - Updated
+                  description: Banner description
+                imageUrl:
+                  type: string
+                  format: uri
+                  example: https://res.cloudinary.com/example/image/upload/v1234567890/banners/mlm-commissions-updated.png
+                  description: Image URL for the banner (can be set to null to remove)
+                link:
+                  type: string
+                  format: uri
+                  example: https://example.com/mlm-commissions-updated
+                  description: External link URL (can be set to null to remove)
+                isActive:
+                  type: boolean
+                  example: true
+                  description: Whether the banner is active
+                order:
+                  type: integer
+                  example: 1
+                  description: Display order (lower number = higher priority)
+      responses:
+        '200':
+          description: Banner updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Banner updated successfully
+                  data:
+                    $ref: '#/components/schemas/Banner'
+        '400':
+          description: Bad request - Banner ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Banner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Banner not found
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Banner
+      summary: Delete banner
+      description: Delete a banner by its ID. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Banner ID
+          example: 60d5ec49f8d2e63a4c8e9a1a
+      responses:
+        '200':
+          description: Banner deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Banner deleted successfully
+                  data:
+                    type: null
+                    example: null
+        '400':
+          description: Bad request - Banner ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Banner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    message: Banner not found
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

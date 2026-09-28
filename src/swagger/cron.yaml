@@ -1,0 +1,114 @@
+paths:
+  /api/v1/cron/roi-calculation:
+    get:
+      tags:
+        - Cron
+      summary: Trigger ROI calculation (Public endpoint for cron services)
+      description: |
+        Public endpoint for triggering daily ROI calculation. Designed for use with external cron services like cronjob.org.
+        
+        **Authentication:**
+        - Uses secret token authentication (not JWT)
+        - Secret can be provided via query parameter: `?secret=YOUR_SECRET_TOKEN`
+        - Or via header: `X-Cron-Secret: YOUR_SECRET_TOKEN`
+        
+        **Environment Variables:**
+        - Set `CRON_JOB_SECRET` or `ROI_CRON_SECRET` in your `.env` file
+        - Use a strong, random secret token for security
+        
+        **Use Cases:**
+        - Automated daily ROI calculation via cronjob.org
+        - External cron service integration
+        - Webhook-based automation
+        
+        **Setup for cronjob.org:**
+        1. Set `CRON_JOB_SECRET` in your environment variables
+        2. Create a cron job on cronjob.org
+        3. Set URL: `https://your-domain.com/api/v1/cron/roi-calculation?secret=YOUR_SECRET_TOKEN`
+        4. Set schedule: Daily at 00:00 UTC (or your preferred time)
+      parameters:
+        - name: secret
+          in: query
+          schema:
+            type: string
+          description: Secret token for authentication (alternative to header)
+          example: your-secret-token-here
+      security:
+        - CronSecretAuth: []
+      responses:
+        '200':
+          description: ROI calculation completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'ROI calculation completed successfully. Processed 10 investments and credited 2.57000000 USDT'
+                  data:
+                    type: object
+                    properties:
+                      processed:
+                        type: number
+                        description: Number of investments processed
+                        example: 10
+                      totalCredited:
+                        type: number
+                        description: Total ROI amount credited (in USDT)
+                        example: 2.57
+                      errors:
+                        type: array
+                        items:
+                          type: string
+                        description: List of errors encountered (if any)
+                        example: []
+                      timestamp:
+                        type: string
+                        format: date-time
+                        description: Timestamp when calculation was completed
+                        example: '2024-12-28T14:30:25.000Z'
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: 'ROI calculation completed successfully. Processed 10 investments and credited 2.57000000 USDT'
+                    data:
+                      processed: 10
+                      totalCredited: 2.57
+                      errors: []
+                      timestamp: '2024-12-28T14:30:25.000Z'
+        '401':
+          description: Unauthorized - invalid or missing secret token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingSecret:
+                  value:
+                    success: false
+                    message: 'Invalid or missing cron job secret'
+                    data: null
+                invalidSecret:
+                  value:
+                    success: false
+                    message: 'Invalid or missing cron job secret'
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    CronSecretAuth:
+      type: apiKey
+      in: query
+      name: secret
+      description: Secret token for cron job authentication
